@@ -1,0 +1,24 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:title="Home"
+        android:icon="@drawable/baseline_home_24" />
+    <item
+        android:id="@+id/nav_logs"
+        android:title="Logs"
+        android:icon="@drawable/baseline_edit_note_24" />
+    <item
+        android:id="@+id/nav_meds"
+        android:title="Meds"
+        android:icon="@drawable/medication"/>
+    <item
+        android:id="@+id/nav_insights"
+        android:title="Insights"
+        android:icon="@drawable/insights"/>
+    <item
+        android:id="@+id/nav_profile"
+        android:title="Profile"
+        android:icon="@drawable/outline_account_circle_24" />
+
+</menu>
