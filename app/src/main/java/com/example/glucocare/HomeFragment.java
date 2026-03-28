@@ -18,7 +18,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -28,12 +27,10 @@ import java.util.Calendar;
 
 public class HomeFragment extends Fragment {
 
-    private static final int SMS_PERMISSION_CODE = 101;
     private TextView tvWelcome, tvLatestLevel, tvAvgLevel, tvAlertTitle, tvAlertDesc;
     private MaterialCardView cardEmergency;
     private Button btnSOS, btnLog, btnLogMeds;
     
-    // Static fields to simulate data
     public static float lastReading = 0;
     public static long lastUpdateTimestamp = System.currentTimeMillis();
     public static String emergencyPhone = "5551234567"; 
@@ -72,14 +69,6 @@ public class HomeFragment extends Fragment {
         btnLog.setOnClickListener(v -> showLogDialog());
         btnLogMeds.setOnClickListener(v -> showLogMedsDialog());
         btnSOS.setOnClickListener(v -> triggerManualSOS());
-
-        checkSmsPermission();
-    }
-
-    private void checkSmsPermission() {
-        if (getContext() != null && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.SEND_SMS}, SMS_PERMISSION_CODE);
-        }
     }
 
     @Override
@@ -137,6 +126,7 @@ public class HomeFragment extends Fragment {
 
     private void sendEmergencySms() {
         try {
+            // Check permission silently; if not granted, the SMS simply won't send automatically
             if (getContext() != null && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
                 SmsManager smsManager = SmsManager.getDefault();
                 String message = "GlucoCare AI Alert: Lack of activity detected for patient " + ProfileFragment.userName + ". Please check immediately.";
@@ -144,7 +134,7 @@ public class HomeFragment extends Fragment {
                 Toast.makeText(getContext(), "Emergency Alert Sent via SMS", Toast.LENGTH_LONG).show();
             }
         } catch (Exception e) {
-            // Log error
+            // Silently fail as requested to remove popups/interruptions
         }
     }
 
