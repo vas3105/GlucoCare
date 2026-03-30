@@ -72,15 +72,14 @@ public class InsightsFragment extends Fragment {
     private void callAI() {
         new Thread(() -> {
             try {
-                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=AIzaSyA0nMy8DGfBS3gDrgLtrJUmsX4QFA7CqmA");
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=AIzaSyDv48MEkKHVRFOXB1oXB1ibHfMDfQm6UWE");
 
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setDoOutput(true);
 
-                String jsonInput = "{\n" +
-                        "  \"contents\": [{\n" +
+                String jsonInput = "{\n" +                        "  \"contents\": [{\n" +
                         "    \"parts\": [{\"text\": \"You are a diabetes assistant. A user has slightly high post-meal glucose. Give response EXACTLY in this format:\\nInsight: ...\\nUrgency: Low/Medium/High\\nTip: ...\"}]\n" +
                         "  }]\n" +
                         "}";
