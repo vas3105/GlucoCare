@@ -21,4 +21,9 @@ public interface GlucoseDao {
     @Query("SELECT AVG(level) FROM glucose_readings " +
             "WHERE type = :type AND timestamp >= :since")
     float getAverageForType(String type, long since);
+
+    /** All readings logged since a given timestamp — used by InsightsFragment
+     *  to fetch only today's readings (pass midnight millis as :since). */
+    @Query("SELECT * FROM glucose_readings WHERE timestamp >= :since ORDER BY timestamp ASC")
+    List<GlucoseReading> getReadingsSince(long since);
 }
