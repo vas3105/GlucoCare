@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
+import com.example.glucocare.repository.GlucoseRepository;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
@@ -30,44 +31,38 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
- * LogsFragment — "New Glucose Log" screen.
+ * LogsFragment — updated to use GlucoseRepository (Room + Firebase).
  *
- * Sits inside MainActivity via BottomNavigationView + FragmentManager.
- * Persists data with Room through AppDatabase / GlucoseDao.
- * OCR via OcrHelper (ML Kit).
+ * All DB operations go through GlucoseRepository which handles
+ * local Room storage and Firestore sync transparently.
  */
 public class LogsFragment extends Fragment {
 
     // ── Views ────────────────────────────────────────────────────────────────
-    private EditText      etGlucoseLevel, etNotes;
-    private ImageButton   btnIncrement, btnDecrement, btnScan;
-    private Button        btnLiveAnalysis, btnSaveReading;
+    private EditText    etGlucoseLevel, etNotes;
+    private ImageButton btnIncrement, btnDecrement, btnScan;
+    private Button      btnLiveAnalysis, btnSaveReading;
+    private TextView    tvAiInsight, tvAiSuggestion, tvDateTime, tvDiscardEntry;
+
+    // Timing rows
     private LinearLayout  rowFasting, rowBeforeMeal, rowAfterMeal;
     private ImageView     ivFastingCheck, ivBeforeMealCheck, ivAfterMealCheck;
-    private String        selectedTiming = "Before Meal"; // default
-    private TextView      tvAiInsight, tvAiSuggestion, tvDateTime, tvDiscardEntry;
+    private String        selectedTiming = "Before Meal";
 
     // ── State ────────────────────────────────────────────────────────────────
     private Calendar selectedDateTime = Calendar.getInstance();
     private Uri      cameraImageUri;
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    private OcrHelper        ocrHelper;
-    private GlucoseDao       glucoseDao;
+    // ── Repository (replaces direct DAO access) ───────────────────────────────
+    private GlucoseRepository glucoseRepository;
+    private OcrHelper         ocrHelper;
 
-    /** Background thread for all Room (database) operations. */
-    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
-
-    // ── Activity-result launchers ────────────────────────────────────────────
-
+    // ── Launchers ────────────────────────────────────────────────────────────
     private final ActivityResultLauncher<String> cameraPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
-                if (granted) launchCamera();
-                else         toast("Camera permission denied.");
+                if (granted) launchCamera(); else toast("Camera permission denied.");
             });
 
     private final ActivityResultLauncher<Intent> cameraLauncher =
@@ -78,8 +73,7 @@ public class LogsFragment extends Fragment {
 
     private final ActivityResultLauncher<String> galleryPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
-                if (granted) launchGallery();
-                else         toast("Storage permission denied.");
+                if (granted) launchGallery(); else toast("Storage permission denied.");
             });
 
     private final ActivityResultLauncher<String> galleryPickerLauncher =
@@ -87,10 +81,9 @@ public class LogsFragment extends Fragment {
                 if (uri != null) runOcr(uri);
             });
 
-    // ── Lifecycle ────────────────────────────────────────────────────────────
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    @Nullable
-    @Override
+    @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
@@ -100,121 +93,88 @@ public class LogsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Room DAO via singleton AppDatabase
-        glucoseDao = AppDatabase.getInstance(requireContext()).glucoseDao();
-        ocrHelper  = new OcrHelper();
-
+        glucoseRepository = new GlucoseRepository(requireContext());
+        ocrHelper         = new OcrHelper();
         bindViews(view);
-        setDefaultDateTime();
+        updateDateTimeDisplay();
         setupListeners();
+        selectTiming("Before Meal"); // default
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        dbExecutor.shutdown();
-    }
-
-    // ── Bind ────────────────────────────────────────────────────────────────
+    // ── Bind ─────────────────────────────────────────────────────────────────
 
     private void bindViews(View v) {
-        etGlucoseLevel  = v.findViewById(R.id.etGlucoseLevel);
-        btnIncrement    = v.findViewById(R.id.btnIncrement);
-        btnDecrement    = v.findViewById(R.id.btnDecrement);
-        btnScan         = v.findViewById(R.id.btnScan);
-        btnLiveAnalysis = v.findViewById(R.id.btnLiveAnalysis);
-        btnSaveReading  = v.findViewById(R.id.btnSaveReading);
+        etGlucoseLevel   = v.findViewById(R.id.etGlucoseLevel);
+        btnIncrement     = v.findViewById(R.id.btnIncrement);
+        btnDecrement     = v.findViewById(R.id.btnDecrement);
+        btnScan          = v.findViewById(R.id.btnScan);
+        btnLiveAnalysis  = v.findViewById(R.id.btnLiveAnalysis);
+        btnSaveReading   = v.findViewById(R.id.btnSaveReading);
+        tvAiInsight      = v.findViewById(R.id.tvAiInsight);
+        tvAiSuggestion   = v.findViewById(R.id.tvAiSuggestion);
+        tvDateTime       = v.findViewById(R.id.tvDateTime);
+        tvDiscardEntry   = v.findViewById(R.id.tvDiscardEntry);
+        etNotes          = v.findViewById(R.id.etNotes);
         rowFasting       = v.findViewById(R.id.rowFasting);
         rowBeforeMeal    = v.findViewById(R.id.rowBeforeMeal);
         rowAfterMeal     = v.findViewById(R.id.rowAfterMeal);
         ivFastingCheck   = v.findViewById(R.id.ivFastingCheck);
         ivBeforeMealCheck= v.findViewById(R.id.ivBeforeMealCheck);
         ivAfterMealCheck = v.findViewById(R.id.ivAfterMealCheck);
-        tvAiInsight     = v.findViewById(R.id.tvAiInsight);
-        tvAiSuggestion  = v.findViewById(R.id.tvAiSuggestion);
-        tvDateTime      = v.findViewById(R.id.tvDateTime);
-        tvDiscardEntry  = v.findViewById(R.id.tvDiscardEntry);
-        etNotes         = v.findViewById(R.id.etNotes);
     }
 
-    // ── Listeners ────────────────────────────────────────────────────────────
+    // ── Listeners ─────────────────────────────────────────────────────────────
 
     private void setupListeners() {
+        btnIncrement.setOnClickListener(v -> setGlucose(Math.min(parseGlucose() + 1, 999)));
+        btnDecrement.setOnClickListener(v -> setGlucose(Math.max(parseGlucose() - 1, 0)));
 
-        // Stepper
-        btnIncrement.setOnClickListener(v -> {
-            float val = parseGlucose();
-            setGlucose(Math.min(val + 1, 999));
-        });
-        btnDecrement.setOnClickListener(v -> {
-            float val = parseGlucose();
-            setGlucose(Math.max(val - 1, 0));
-        });
-
-        // Live insight as user types
         etGlucoseLevel.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { updateAiInsight(); }
         });
 
-        // Timing rows — clicking the whole row selects the radio
         rowFasting.setOnClickListener(v    -> selectTiming("Fasting"));
         rowBeforeMeal.setOnClickListener(v -> selectTiming("Before Meal"));
         rowAfterMeal.setOnClickListener(v  -> selectTiming("After Meal"));
-        // Scan
-        btnScan.setOnClickListener(v -> showScanOptions());
 
-        // Live Analysis button
+        btnScan.setOnClickListener(v -> showScanOptions());
         btnLiveAnalysis.setOnClickListener(v -> {
             if (parseGlucose() == 0) { toast("Enter a glucose level first."); return; }
             updateAiInsight();
-            toast("Insight updated!");
         });
 
-        // Date/time
         requireView().findViewById(R.id.rowDateTime)
                 .setOnClickListener(v -> showDatePicker());
 
-        // Save
         btnSaveReading.setOnClickListener(v -> saveReading());
-
-        // Discard
         tvDiscardEntry.setOnClickListener(v -> confirmDiscard());
     }
-    /** Visually selects one timing row and deselects the others. */
+
+    // ── Timing ────────────────────────────────────────────────────────────────
+
     private void selectTiming(String timing) {
         selectedTiming = timing;
-
-        // Reset all rows to unselected look
         setRowSelected(rowFasting,    ivFastingCheck,    false);
         setRowSelected(rowBeforeMeal, ivBeforeMealCheck, false);
         setRowSelected(rowAfterMeal,  ivAfterMealCheck,  false);
-
-        // Highlight the chosen row
         switch (timing) {
-            case "Fasting":
-                setRowSelected(rowFasting,    ivFastingCheck,    true); break;
-            case "Before Meal":
-                setRowSelected(rowBeforeMeal, ivBeforeMealCheck, true); break;
-            case "After Meal":
-                setRowSelected(rowAfterMeal,  ivAfterMealCheck,  true); break;
+            case "Fasting":     setRowSelected(rowFasting,    ivFastingCheck,    true); break;
+            case "Before Meal": setRowSelected(rowBeforeMeal, ivBeforeMealCheck, true); break;
+            case "After Meal":  setRowSelected(rowAfterMeal,  ivAfterMealCheck,  true); break;
         }
-
         updateAiInsight();
     }
 
-    /** Applies selected/unselected visual styling to a timing row. */
-    private void setRowSelected(LinearLayout row, ImageView checkIcon, boolean selected) {
-        checkIcon.setVisibility(selected ? View.VISIBLE : View.GONE);
-        // Optional: tint the row background when selected
+    private void setRowSelected(LinearLayout row, ImageView check, boolean selected) {
+        check.setVisibility(selected ? View.VISIBLE : View.GONE);
         row.setBackgroundResource(selected
-                ? R.drawable.bg_timing_option_selected   // create this (see note below)
+                ? R.drawable.bg_timing_option_selected
                 : R.drawable.bg_timing_option);
     }
 
-    // ── Glucose helpers ──────────────────────────────────────────────────────
+    // ── Glucose helpers ───────────────────────────────────────────────────────
 
     private float parseGlucose() {
         try { return Float.parseFloat(etGlucoseLevel.getText().toString().trim()); }
@@ -222,7 +182,6 @@ public class LogsFragment extends Fragment {
     }
 
     private void setGlucose(float value) {
-        // Show as integer when whole number, otherwise 1 decimal
         String display = (value == Math.floor(value))
                 ? String.valueOf((int) value)
                 : String.format(Locale.getDefault(), "%.1f", value);
@@ -230,7 +189,7 @@ public class LogsFragment extends Fragment {
         etGlucoseLevel.setSelection(etGlucoseLevel.getText().length());
     }
 
-    // ── AI Insight ───────────────────────────────────────────────────────────
+    // ── AI Insight ────────────────────────────────────────────────────────────
 
     private void updateAiInsight() {
         float glucose = parseGlucose();
@@ -240,74 +199,48 @@ public class LogsFragment extends Fragment {
             return;
         }
 
-        String timing = getSelectedTiming();
+        // Fetch 7-day average from repository (Room)
+        glucoseRepository.getSevenDayAverage(selectedTiming,
+                new GlucoseRepository.Callback<Float>() {
+                    @Override public void onResult(Float avg) {
+                        String[] insight = buildInsight(glucose, selectedTiming, avg);
+                        requireActivity().runOnUiThread(() -> {
+                            tvAiInsight.setText(insight[0]);
+                            tvAiSuggestion.setText(insight[1]);
+                            tvAiSuggestion.setVisibility(View.VISIBLE);
+                        });
+                    }
+                    @Override public void onError(String error) {
+                        String[] insight = buildInsight(glucose, selectedTiming, -1f);
+                        requireActivity().runOnUiThread(() -> {
+                            tvAiInsight.setText(insight[0]);
+                            tvAiSuggestion.setVisibility(View.GONE);
+                        });
+                    }
+                });
+    }
 
-        // Fetch 7-day average on background thread, then update UI
-        dbExecutor.execute(() -> {
-            long sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
-            float avg = glucoseDao.getAverageForType(timing, sevenDaysAgo);
-
-            String main, sub;
-
-            if ("Fasting".equals(timing)) {
-                if (glucose < 70) {
-                    main = "⚠️ Your fasting level of " + fmt(glucose)
-                            + " mg/dL is low (hypoglycemia range). Please have a snack.";
-                    sub  = "Have 15 g of fast-acting carbs and re-check in 15 minutes.";
-                } else if (glucose <= 99) {
-                    main = "✅ Your fasting level of " + fmt(glucose) + " mg/dL is normal.";
-                    sub  = avg > 0
-                            ? "This is " + compare(glucose, avg) + " your 7-day fasting avg of " + fmt(avg) + " mg/dL."
-                            : "Keep up the great work!";
-                } else if (glucose <= 125) {
-                    main = "⚡ Fasting level " + fmt(glucose) + " mg/dL is slightly elevated (pre-diabetes range).";
-                    sub  = "Consider a low-glycemic breakfast and a short morning walk.";
-                } else {
-                    main = "🚨 Fasting level " + fmt(glucose) + " mg/dL is high. Please consult your provider.";
-                    sub  = "Avoid high-carb meals and track your next reading carefully.";
-                }
-            } else if ("Before Meal".equals(timing)) {
-                if (glucose < 80) {
-                    main = "⚠️ Pre-meal level " + fmt(glucose) + " mg/dL is below target. Consider a small snack.";
-                    sub  = "Adjust insulin timing only as directed by your doctor.";
-                } else if (glucose <= 130) {
-                    main = "✅ Pre-meal level " + fmt(glucose) + " mg/dL looks good. Proceed with a balanced meal.";
-                    sub  = avg > 0
-                            ? "This is " + compare(glucose, avg) + " your 7-day pre-meal avg of " + fmt(avg) + " mg/dL."
-                            : "Aim for fiber, protein and moderate carbs.";
-                } else {
-                    main = "⚡ Pre-meal level " + fmt(glucose) + " mg/dL is above target.";
-                    sub  = "Choose vegetables, lean protein and low-GI carbohydrates.";
-                }
-            } else { // After Meal
-                if (glucose <= 140) {
-                    main = "✅ Post-meal level " + fmt(glucose) + " mg/dL is within the healthy range.";
-                    sub  = avg > 0
-                            ? "This is " + compare(glucose, avg) + " your 7-day post-meal avg of " + fmt(avg) + " mg/dL."
-                            : "A 10-minute walk can help stabilise levels further.";
-                } else if (glucose <= 180) {
-                    main = "⚡ Post-meal level " + fmt(glucose) + " mg/dL is slightly elevated.";
-                    sub  = "Light activity after eating helps glucose uptake.";
-                } else {
-                    main = "🚨 Post-meal level " + fmt(glucose) + " mg/dL is high. Review your meal and consult your doctor.";
-                    sub  = "Avoid repeat high-carb meals. Ask your provider about your 2-hour target.";
-                }
-            }
-
-            final String finalMain = main;
-            final String finalSub  = sub;
-
-            requireActivity().runOnUiThread(() -> {
-                tvAiInsight.setText(finalMain);
-                tvAiSuggestion.setText(finalSub);
-                tvAiSuggestion.setVisibility(View.VISIBLE);
-            });
-        });
+    private String[] buildInsight(float glucose, String timing, float avg) {
+        String main, sub;
+        if ("Fasting".equals(timing)) {
+            if (glucose < 70)        { main = "⚠️ Fasting level " + fmt(glucose) + " mg/dL is low."; sub = "Have 15g of fast-acting carbs and re-check in 15 min."; }
+            else if (glucose <= 99)  { main = "✅ Fasting level " + fmt(glucose) + " mg/dL is normal."; sub = avg > 0 ? "This is " + compare(glucose, avg) + " your 7-day avg of " + fmt(avg) + " mg/dL." : "Keep it up!"; }
+            else if (glucose <= 125) { main = "⚡ Fasting level " + fmt(glucose) + " mg/dL is slightly elevated."; sub = "Consider a low-glycemic breakfast and a morning walk."; }
+            else                     { main = "🚨 Fasting level " + fmt(glucose) + " mg/dL is high. Consult your provider."; sub = "Track your next reading carefully."; }
+        } else if ("Before Meal".equals(timing)) {
+            if (glucose < 80)        { main = "⚠️ Pre-meal level " + fmt(glucose) + " mg/dL is below target."; sub = "Consider a small snack before your meal."; }
+            else if (glucose <= 130) { main = "✅ Pre-meal level " + fmt(glucose) + " mg/dL looks good."; sub = avg > 0 ? "This is " + compare(glucose, avg) + " your 7-day avg of " + fmt(avg) + " mg/dL." : "Aim for fiber, protein and moderate carbs."; }
+            else                     { main = "⚡ Pre-meal level " + fmt(glucose) + " mg/dL is above target."; sub = "Choose low-GI carbohydrates and lean protein."; }
+        } else {
+            if (glucose <= 140)      { main = "✅ Post-meal level " + fmt(glucose) + " mg/dL is healthy."; sub = avg > 0 ? "This is " + compare(glucose, avg) + " your 7-day avg of " + fmt(avg) + " mg/dL." : "A 10-min walk helps stabilize levels."; }
+            else if (glucose <= 180) { main = "⚡ Post-meal level " + fmt(glucose) + " mg/dL is slightly high."; sub = "Light activity after eating helps glucose uptake."; }
+            else                     { main = "🚨 Post-meal level " + fmt(glucose) + " mg/dL is high. Review your meal."; sub = "Avoid repeat high-carb meals."; }
+        }
+        return new String[]{main, sub};
     }
 
     private String fmt(float v) {
-        return (v == Math.floor(v))
-                ? String.valueOf((int) v)
+        return (v == Math.floor(v)) ? String.valueOf((int) v)
                 : String.format(Locale.getDefault(), "%.1f", v);
     }
 
@@ -317,39 +250,26 @@ public class LogsFragment extends Fragment {
         return diff > 0 ? "slightly higher than" : "slightly lower than";
     }
 
-    private String getSelectedTiming() {
-        return selectedTiming;
-    }
-
-    // ── Date / Time ──────────────────────────────────────────────────────────
-
-    private void setDefaultDateTime() { updateDateTimeDisplay(); }
+    // ── Date / Time ───────────────────────────────────────────────────────────
 
     private void showDatePicker() {
-        new DatePickerDialog(requireContext(),
-                (view, year, month, day) -> {
-                    selectedDateTime.set(Calendar.YEAR, year);
-                    selectedDateTime.set(Calendar.MONTH, month);
-                    selectedDateTime.set(Calendar.DAY_OF_MONTH, day);
-                    showTimePicker();
-                },
-                selectedDateTime.get(Calendar.YEAR),
+        new DatePickerDialog(requireContext(), (v, y, m, d) -> {
+            selectedDateTime.set(Calendar.YEAR, y);
+            selectedDateTime.set(Calendar.MONTH, m);
+            selectedDateTime.set(Calendar.DAY_OF_MONTH, d);
+            showTimePicker();
+        }, selectedDateTime.get(Calendar.YEAR),
                 selectedDateTime.get(Calendar.MONTH),
-                selectedDateTime.get(Calendar.DAY_OF_MONTH)
-        ).show();
+                selectedDateTime.get(Calendar.DAY_OF_MONTH)).show();
     }
 
     private void showTimePicker() {
-        new TimePickerDialog(requireContext(),
-                (view, hour, minute) -> {
-                    selectedDateTime.set(Calendar.HOUR_OF_DAY, hour);
-                    selectedDateTime.set(Calendar.MINUTE, minute);
-                    updateDateTimeDisplay();
-                },
-                selectedDateTime.get(Calendar.HOUR_OF_DAY),
-                selectedDateTime.get(Calendar.MINUTE),
-                false
-        ).show();
+        new TimePickerDialog(requireContext(), (v, h, min) -> {
+            selectedDateTime.set(Calendar.HOUR_OF_DAY, h);
+            selectedDateTime.set(Calendar.MINUTE, min);
+            updateDateTimeDisplay();
+        }, selectedDateTime.get(Calendar.HOUR_OF_DAY),
+                selectedDateTime.get(Calendar.MINUTE), false).show();
     }
 
     private void updateDateTimeDisplay() {
@@ -357,16 +277,14 @@ public class LogsFragment extends Fragment {
         tvDateTime.setText(sdf.format(selectedDateTime.getTime()));
     }
 
-    // ── OCR ─────────────────────────────────────────────────────────────────
+    // ── OCR ───────────────────────────────────────────────────────────────────
 
     private void showScanOptions() {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Scan Glucose Value")
                 .setItems(new String[]{"Take Photo", "Choose from Gallery"}, (d, which) -> {
-                    if (which == 0) checkCameraPermission();
-                    else            checkGalleryPermission();
-                })
-                .show();
+                    if (which == 0) checkCameraPermission(); else checkGalleryPermission();
+                }).show();
     }
 
     private void checkCameraPermission() {
@@ -377,28 +295,18 @@ public class LogsFragment extends Fragment {
 
     private void launchCamera() {
         try {
-            File photoFile = createTempImageFile();
+            File f = File.createTempFile("GLUCOSE_", ".jpg", requireContext().getExternalFilesDir(null));
             cameraImageUri = FileProvider.getUriForFile(requireContext(),
-                    requireContext().getPackageName() + ".fileprovider", photoFile);
-            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri);
-            cameraLauncher.launch(intent);
-        } catch (IOException e) {
-            toast("Could not create image file.");
-        }
-    }
-
-    private File createTempImageFile() throws IOException {
-        String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-                .format(System.currentTimeMillis());
-        return File.createTempFile("GLUCOSE_" + stamp, ".jpg",
-                requireContext().getExternalFilesDir(null));
+                    requireContext().getPackageName() + ".fileprovider", f);
+            Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            i.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri);
+            cameraLauncher.launch(i);
+        } catch (IOException e) { toast("Could not create image file."); }
     }
 
     private void checkGalleryPermission() {
         String perm = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                ? Manifest.permission.READ_MEDIA_IMAGES
-                : Manifest.permission.READ_EXTERNAL_STORAGE;
+                ? Manifest.permission.READ_MEDIA_IMAGES : Manifest.permission.READ_EXTERNAL_STORAGE;
         if (ContextCompat.checkSelfPermission(requireContext(), perm)
                 == PackageManager.PERMISSION_GRANTED) launchGallery();
         else galleryPermissionLauncher.launch(perm);
@@ -409,71 +317,61 @@ public class LogsFragment extends Fragment {
     private void runOcr(Uri uri) {
         toast("Processing image…");
         ocrHelper.extractGlucoseValue(requireContext(), uri, new OcrHelper.OcrCallback() {
-            @Override public void onSuccess(int glucoseValue) {
-                requireActivity().runOnUiThread(() -> {
-                    setGlucose(glucoseValue);
-                    updateAiInsight();
-                    snack("Detected " + glucoseValue + " mg/dL from image.");
-                });
+            @Override public void onSuccess(int v) {
+                requireActivity().runOnUiThread(() -> { setGlucose(v); updateAiInsight();
+                    snack("Detected " + v + " mg/dL from image."); });
             }
             @Override public void onFailure(String msg) {
-                requireActivity().runOnUiThread(() ->
-                        snack("OCR failed: " + msg + " — please enter manually."));
+                requireActivity().runOnUiThread(() -> snack("OCR: " + msg));
             }
         });
     }
 
-    // ── Save / Discard ────────────────────────────────────────────────────────
+    // ── Save ──────────────────────────────────────────────────────────────────
 
     private void saveReading() {
         float glucose = parseGlucose();
-
-        // Validate
-        if (glucose == 0) { snack("Please enter a glucose level."); return; }
+        if (glucose == 0)              { snack("Please enter a glucose level."); return; }
         if (glucose < 20 || glucose > 600) { snack("Value must be between 20 and 600 mg/dL."); return; }
 
-        String timing = getSelectedTiming();
-        String notes  = etNotes.getText().toString().trim();
-        long   ts     = selectedDateTime.getTimeInMillis();
+        GlucoseReading reading = new GlucoseReading(
+                glucose, selectedTiming,
+                selectedDateTime.getTimeInMillis(),
+                etNotes.getText().toString().trim()
+        );
 
-        GlucoseReading reading = new GlucoseReading(glucose, timing, ts, notes);
-
-        // Room insert on background thread
-        dbExecutor.execute(() -> {
-            glucoseDao.insert(reading);
-            requireActivity().runOnUiThread(() -> {
-                snack("Reading saved! 🎉");
-                clearForm();
-            });
+        // ── Repository handles Room + Firestore sync ──────────────────────────
+        glucoseRepository.saveReading(reading, new GlucoseRepository.Callback<Void>() {
+            @Override public void onResult(Void v) {
+                requireActivity().runOnUiThread(() -> { snack("Reading saved! 🎉"); clearForm(); });
+            }
+            @Override public void onError(String error) {
+                // Saved locally even if Firestore failed
+                requireActivity().runOnUiThread(() -> { snack("Saved locally (will sync when online)."); clearForm(); });
+            }
         });
     }
 
     private void confirmDiscard() {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Discard Entry")
-                .setMessage("Are you sure you want to discard this entry?")
+                .setMessage("Discard this entry?")
                 .setPositiveButton("Discard", (d, w) -> clearForm())
-                .setNegativeButton("Cancel", null)
-                .show();
+                .setNegativeButton("Cancel", null).show();
     }
 
     private void clearForm() {
         etGlucoseLevel.setText("");
-       selectTiming("Before Meal");
         etNotes.setText("");
         selectedDateTime = Calendar.getInstance();
         updateDateTimeDisplay();
+        selectTiming("Before Meal");
         tvAiInsight.setText("Enter your glucose level to get a personalized AI insight.");
         tvAiSuggestion.setVisibility(View.GONE);
     }
 
-    // ── Utility ──────────────────────────────────────────────────────────────
+    // ── Utility ───────────────────────────────────────────────────────────────
 
-    private void toast(String msg) {
-        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-    }
-
-    private void snack(String msg) {
-        Snackbar.make(requireView(), msg, Snackbar.LENGTH_LONG).show();
-    }
+    private void toast(String msg) { Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show(); }
+    private void snack(String msg) { Snackbar.make(requireView(), msg, Snackbar.LENGTH_LONG).show(); }
 }

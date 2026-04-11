@@ -127,7 +127,7 @@ public class InsightsFragment extends Fragment {
     // ── Step 2: Send prompt to Gemini API ─────────────────────────────────────
     private void callAI(String prompt) {
         try {
-            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=AIzaSyDJ3ihDuLQCO7dIFBI08G5R8jXjJ1PQyt4");
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=AIzaSyCvWiQruS2XfOFG7EsYeq30GdHjNWAc1EY");
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");

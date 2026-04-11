@@ -6,26 +6,35 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {GlucoseReading.class}, version = 2, exportSchema = false)
+/**
+ * AppDatabase — version 3
+ *
+ * v1 → v2: added notes column to glucose_readings
+ * v2 → v3: added medications table
+ */
+@Database(
+        entities  = { GlucoseReading.class, Medicine.class },
+        version   = 3,
+        exportSchema = false
+)
 public abstract class AppDatabase extends RoomDatabase {
 
-    public abstract GlucoseDao glucoseDao();
+    public abstract GlucoseDao   glucoseDao();
+    public abstract MedicineDao  medicineDao();
 
-    // ── Thread-safe singleton ─────────────────────────────────────────────────
+    // ── Singleton ─────────────────────────────────────────────────────────────
     private static volatile AppDatabase INSTANCE;
 
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
-                    Builder<AppDatabase> glucocareDb = Room.databaseBuilder(
-                            context.getApplicationContext(),
-                            AppDatabase.class,
-                            "glucocare_db"
-                    );
-                    glucocareDb.fallbackToDestructiveMigration();// Wipes and rebuilds on schema change (safe for dev).
-// Replace with a proper Migration for production.
-                    INSTANCE = glucocareDb
+                    INSTANCE = Room.databaseBuilder(
+                                    context.getApplicationContext(),
+                                    AppDatabase.class,
+                                    "glucocare_db"
+                            )
+                            .fallbackToDestructiveMigration() // safe for dev
                             .build();
                 }
             }

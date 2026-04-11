@@ -9,4 +9,8 @@
     <color name="red_light">#FFE0E0</color>
     <color name="green_active">#00A36C</color>
     <color name="blue_light">#E8EEF5</color>
+    <!-- Status badge colors -->
+    <color name="status_taken">#1DB954</color>
+    <color name="status_missed">#FF3B30</color>
+    <color name="status_upcoming">#E0E8F0</color>
 </resources>

@@ -1,52 +1,74 @@
 package com.example.glucocare;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import com.example.glucocare.auth.LoginActivity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 
+/**
+ * MainActivity — hosts all fragments via BottomNavigationView.
+ *
+ * Auth check: if somehow reached without a signed-in user,
+ * redirect immediately back to LoginActivity.
+ */
 public class MainActivity extends AppCompatActivity {
 
-    BottomNavigationView bottomNav;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        auth = FirebaseAuth.getInstance();
+
+        // Guard: must be logged in to reach here
+        if (auth.getCurrentUser() == null) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
-        bottomNav = findViewById(R.id.bottom_nav);
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
 
-        // Default fragment
-        loadFragment(new HomeFragment());
+        // Load default fragment
+        if (savedInstanceState == null) {
+            loadFragment(new HomeFragment());
+            bottomNav.setSelectedItemId(R.id.nav_home);
+        }
 
         bottomNav.setOnItemSelectedListener(item -> {
-            Fragment selectedFragment = null;
+            Fragment selected = null;
+            int id = item.getItemId();
 
-            if (item.getItemId() == R.id.nav_home)
-                selectedFragment = new HomeFragment();
-            else if (item.getItemId() == R.id.nav_logs)
-                selectedFragment = new LogsFragment();
-            else if (item.getItemId() == R.id.nav_meds)
-                selectedFragment = new MedsFragment();
-            else if (item.getItemId() == R.id.nav_profile)
-                selectedFragment = new ProfileFragment();
-            else if (item.getItemId()==R.id.nav_insights)
-                selectedFragment=new InsightsFragment();
+            if      (id == R.id.nav_home)     selected = new HomeFragment();
+            else if (id == R.id.nav_logs)     selected = new LogsFragment();
+            else if (id == R.id.nav_meds)     selected = new MedsFragment();
+            else if (id == R.id.nav_insights) selected = new InsightsFragment();
+            else if (id == R.id.nav_profile)  selected = new ProfileFragment();
 
-            return loadFragment(selectedFragment);
+            if (selected != null) { loadFragment(selected); return true; }
+            return false;
         });
     }
 
-    private boolean loadFragment(Fragment fragment) {
-        if (fragment != null) {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .commit();
-            return true;
-        }
-        return false;
+    private void loadFragment(Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
+    }
+
+    // ── Sign out — call this from ProfileFragment ─────────────────────────────
+    public void signOut() {
+        auth.signOut();
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
     }
 }

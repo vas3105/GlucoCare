@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "744073866051",
+    "project_id": "glucocare-ce321",
+    "storage_bucket": "glucocare-ce321.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744073866051:android:22eec4f30fd0e61fea9df6",
+        "android_client_info": {
+          "package_name": "com.example.glucocare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvciCjiOg5M5DAmlZBTtGVBGoSHAMW4F0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
