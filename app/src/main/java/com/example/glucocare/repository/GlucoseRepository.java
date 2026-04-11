@@ -18,13 +18,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * GlucoseRepository — offline-first sync layer.
- *
- * WRITE → Room immediately → Firestore async.
- * READ  → always Room (instant, works offline).
- * SYNC  → Firestore → Room on login.
- */
 public class GlucoseRepository {
 
     private static final String TAG        = "GlucoseRepository";
@@ -34,14 +27,10 @@ public class GlucoseRepository {
     private final FirebaseFirestore firestore;
     private final ExecutorService   executor;
 
-    // ── Callback ─────────────────────────────────────────────────────────────
-
     public interface Callback<T> {
         void onResult(T result);
         void onError(String error);
     }
-
-    // ── Constructor ───────────────────────────────────────────────────────────
 
     public GlucoseRepository(Context context) {
         localDao  = AppDatabase.getInstance(context).glucoseDao();
@@ -49,18 +38,22 @@ public class GlucoseRepository {
         executor  = Executors.newSingleThreadExecutor();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── UID helper — fetched fresh every time, never cached ──────────────────
+    // This guarantees we always use the real logged-in user's UID,
+    // never a stale or empty value.
 
-    /**
-     * Returns the Firestore collection for the current user,
-     * or null if no user is signed in.
-     */
-    private CollectionReference collection() {
+    private String getCurrentUid() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return null;
+        return user.getUid();
+    }
+
+    private CollectionReference collection() {
+        String uid = getCurrentUid();
+        if (uid == null) return null;
         return firestore
                 .collection("users")
-                .document(user.getUid())
+                .document(uid)
                 .collection(COLLECTION);
     }
 
@@ -68,16 +61,18 @@ public class GlucoseRepository {
 
     public void saveReading(GlucoseReading reading, Callback<Void> callback) {
         executor.execute(() -> {
-            // 1. Save to Room immediately
+            // 1. Always save locally first
             localDao.insert(reading);
 
-            // 2. Push to Firestore if signed in
+            // 2. Push to Firestore under the correct UID
             CollectionReference col = collection();
             if (col == null) {
-                Log.w(TAG, "No signed-in user — saved locally only.");
+                Log.w(TAG, "saveReading: no signed-in user, saved locally only.");
                 if (callback != null) callback.onResult(null);
                 return;
             }
+
+            Log.d(TAG, "Saving reading to: users/" + getCurrentUid() + "/" + COLLECTION);
 
             col.add(toMap(reading))
                     .addOnSuccessListener(ref -> {
@@ -85,8 +80,7 @@ public class GlucoseRepository {
                         if (callback != null) callback.onResult(null);
                     })
                     .addOnFailureListener(e -> {
-                        // Local copy is safe — cloud will sync when online
-                        Log.w(TAG, "Firestore save failed (local ok): " + e.getMessage());
+                        Log.w(TAG, "Firestore save failed: " + e.getMessage());
                         if (callback != null) callback.onError(e.getMessage());
                     });
         });
@@ -94,7 +88,6 @@ public class GlucoseRepository {
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
-    /** Always reads from Room — works offline, instant. */
     public void getAllReadings(Callback<List<GlucoseReading>> callback) {
         executor.execute(() -> {
             List<GlucoseReading> list = localDao.getAllReadings();
@@ -102,7 +95,6 @@ public class GlucoseRepository {
         });
     }
 
-    /** 7-day average for a timing type, queried from Room. */
     public void getSevenDayAverage(String type, Callback<Float> callback) {
         executor.execute(() -> {
             long since = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
@@ -111,12 +103,8 @@ public class GlucoseRepository {
         });
     }
 
-    // ── Sync (Firestore → Room) ───────────────────────────────────────────────
+    // ── Sync Firestore → Room ─────────────────────────────────────────────────
 
-    /**
-     * Pull all readings from Firestore and refresh Room.
-     * Called once after login to bring cloud data onto the device.
-     */
     public void syncFromFirestore(Callback<Void> callback) {
         CollectionReference col = collection();
         if (col == null) {
@@ -125,18 +113,18 @@ public class GlucoseRepository {
             return;
         }
 
+        Log.d(TAG, "Syncing from: users/" + getCurrentUid() + "/" + COLLECTION);
+
         col.get()
-                .addOnSuccessListener(snapshot -> {
-                    executor.execute(() -> {
-                        localDao.deleteAll();
-                        for (QueryDocumentSnapshot doc : snapshot) {
-                            GlucoseReading r = fromMap(doc);
-                            if (r != null) localDao.insert(r);
-                        }
-                        Log.d(TAG, "Sync complete: " + snapshot.size() + " readings.");
-                        if (callback != null) callback.onResult(null);
-                    });
-                })
+                .addOnSuccessListener(snapshot -> executor.execute(() -> {
+                    localDao.deleteAll();
+                    for (QueryDocumentSnapshot doc : snapshot) {
+                        GlucoseReading r = fromMap(doc);
+                        if (r != null) localDao.insert(r);
+                    }
+                    Log.d(TAG, "Sync done: " + snapshot.size() + " readings.");
+                    if (callback != null) callback.onResult(null);
+                }))
                 .addOnFailureListener(e -> {
                     Log.w(TAG, "Sync failed: " + e.getMessage());
                     if (callback != null) callback.onError(e.getMessage());
@@ -148,28 +136,21 @@ public class GlucoseRepository {
     private Map<String, Object> toMap(GlucoseReading r) {
         Map<String, Object> m = new HashMap<>();
         m.put("level",     r.level);
-        m.put("type",      r.type     != null ? r.type  : "");
+        m.put("type",      r.type  != null ? r.type  : "");
         m.put("timestamp", r.timestamp);
-        m.put("notes",     r.notes    != null ? r.notes : "");
+        m.put("notes",     r.notes != null ? r.notes : "");
         return m;
     }
 
     private GlucoseReading fromMap(QueryDocumentSnapshot doc) {
         try {
             GlucoseReading r = new GlucoseReading();
-
-            // level — null-safe Double → float
-            Double levelVal = doc.getDouble("level");
-            r.level = (levelVal != null) ? levelVal.floatValue() : 0f;
-
-            // type / notes — null-safe strings
-            r.type  = doc.getString("type");
-            r.notes = doc.getString("notes");
-
-            // timestamp — null-safe Long
-            Long tsVal = doc.getLong("timestamp");
-            r.timestamp = (tsVal != null) ? tsVal : 0L;
-
+            Double levelVal  = doc.getDouble("level");
+            r.level          = levelVal  != null ? levelVal.floatValue() : 0f;
+            r.type           = doc.getString("type");
+            r.notes          = doc.getString("notes");
+            Long tsVal       = doc.getLong("timestamp");
+            r.timestamp      = tsVal != null ? tsVal : 0L;
             return r;
         } catch (Exception e) {
             Log.e(TAG, "fromMap error: " + e.getMessage());

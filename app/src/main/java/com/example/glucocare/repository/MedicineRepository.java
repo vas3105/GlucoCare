@@ -7,6 +7,8 @@ import com.example.glucocare.AppDatabase;
 import com.example.glucocare.Medicine;
 import com.example.glucocare.MedicineDao;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -16,14 +18,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * MedicineRepository — single source of truth for medications.
- *
- * Same offline-first pattern as GlucoseRepository:
- *   WRITE → Room first, then Firestore async.
- *   READ  → always Room.
- *   SYNC  → Firestore → Room on login.
- */
 public class MedicineRepository {
 
     private static final String TAG        = "MedicineRepository";
@@ -31,7 +25,7 @@ public class MedicineRepository {
 
     private final MedicineDao      localDao;
     private final FirebaseFirestore firestore;
-    private final ExecutorService  executor;
+    private final ExecutorService   executor;
 
     public interface Callback<T> {
         void onResult(T result);
@@ -44,14 +38,20 @@ public class MedicineRepository {
         executor  = Executors.newSingleThreadExecutor();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── UID helper — fetched fresh every time, never cached ──────────────────
 
-    private String uid() {
-        return FirebaseAuth.getInstance().getCurrentUser().getUid();
+    private String getCurrentUid() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return null;
+        return user.getUid();
     }
 
-    private com.google.firebase.firestore.CollectionReference collection() {
-        return firestore.collection("users").document(uid())
+    private CollectionReference collection() {
+        String uid = getCurrentUid();
+        if (uid == null) return null;
+        return firestore
+                .collection("users")
+                .document(uid)
                 .collection(COLLECTION);
     }
 
@@ -59,27 +59,32 @@ public class MedicineRepository {
 
     public void saveMedicine(Medicine medicine, Callback<Void> callback) {
         executor.execute(() -> {
-            // 1. Save locally
+            // 1. Save locally first
             long localId = localDao.insert(medicine);
 
-            // 2. Push to Firestore
-            collection().add(toMap(medicine))
+            // 2. Push to Firestore under real UID
+            CollectionReference col = collection();
+            if (col == null) {
+                Log.w(TAG, "saveMedicine: no signed-in user, saved locally only.");
+                if (callback != null) callback.onResult(null);
+                return;
+            }
+
+            Log.d(TAG, "Saving medicine to: users/" + getCurrentUid() + "/" + COLLECTION);
+
+            col.add(toMap(medicine))
                     .addOnSuccessListener(ref -> {
-                        // Store Firestore ID back in Room so we can update/delete later
+                        // Store Firestore doc ID back into Room for future updates/deletes
                         executor.execute(() -> {
-                            Medicine saved = localDao.getByFirestoreId(ref.getId());
-                            if (saved == null) {
-                                // fetch by local id workaround
-                                medicine.id          = (int) localId;
-                                medicine.firestoreId = ref.getId();
-                                localDao.update(medicine);
-                            }
+                            medicine.id          = (int) localId;
+                            medicine.firestoreId = ref.getId();
+                            localDao.update(medicine);
                         });
-                        Log.d(TAG, "Firestore save ok: " + ref.getId());
+                        Log.d(TAG, "Medicine saved to Firestore: " + ref.getId());
                         if (callback != null) callback.onResult(null);
                     })
                     .addOnFailureListener(e -> {
-                        Log.w(TAG, "Firestore save failed (local ok): " + e.getMessage());
+                        Log.w(TAG, "Firestore save failed: " + e.getMessage());
                         if (callback != null) callback.onError(e.getMessage());
                     });
         });
@@ -90,22 +95,22 @@ public class MedicineRepository {
     public void updateStatus(Medicine medicine, Medicine.Status newStatus,
                              Callback<Void> callback) {
         medicine.setStatusEnum(newStatus);
-
         executor.execute(() -> {
-            // 1. Update Room
             localDao.update(medicine);
 
-            // 2. Update Firestore (if we have a firestoreId)
             if (medicine.firestoreId != null && !medicine.firestoreId.isEmpty()) {
-                collection().document(medicine.firestoreId)
-                        .update("status", newStatus.name())
-                        .addOnSuccessListener(v -> {
-                            if (callback != null) callback.onResult(null);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.w(TAG, "Status update failed in Firestore: " + e.getMessage());
-                            if (callback != null) callback.onError(e.getMessage());
-                        });
+                CollectionReference col = collection();
+                if (col != null) {
+                    col.document(medicine.firestoreId)
+                            .update("status", newStatus.name())
+                            .addOnSuccessListener(v -> {
+                                if (callback != null) callback.onResult(null);
+                            })
+                            .addOnFailureListener(e -> {
+                                Log.w(TAG, "Status update failed: " + e.getMessage());
+                                if (callback != null) callback.onError(e.getMessage());
+                            });
+                }
             } else {
                 if (callback != null) callback.onResult(null);
             }
@@ -119,14 +124,17 @@ public class MedicineRepository {
             localDao.delete(medicine);
 
             if (medicine.firestoreId != null && !medicine.firestoreId.isEmpty()) {
-                collection().document(medicine.firestoreId).delete()
-                        .addOnSuccessListener(v -> {
-                            if (callback != null) callback.onResult(null);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.w(TAG, "Delete failed in Firestore: " + e.getMessage());
-                            if (callback != null) callback.onError(e.getMessage());
-                        });
+                CollectionReference col = collection();
+                if (col != null) {
+                    col.document(medicine.firestoreId).delete()
+                            .addOnSuccessListener(v -> {
+                                if (callback != null) callback.onResult(null);
+                            })
+                            .addOnFailureListener(e -> {
+                                Log.w(TAG, "Delete failed: " + e.getMessage());
+                                if (callback != null) callback.onError(e.getMessage());
+                            });
+                }
             } else {
                 if (callback != null) callback.onResult(null);
             }
@@ -138,34 +146,40 @@ public class MedicineRepository {
     public void getAllMedications(Callback<List<Medicine>> callback) {
         executor.execute(() -> {
             List<Medicine> list = localDao.getAllMedications();
-            callback.onResult(list);
+            if (callback != null) callback.onResult(list);
         });
     }
 
     public void getAdherenceStats(Callback<int[]> callback) {
-        // returns int[] { taken, total }
         executor.execute(() -> {
             int taken = localDao.countTaken();
             int total = localDao.countTotal();
-            callback.onResult(new int[]{taken, total});
+            if (callback != null) callback.onResult(new int[]{taken, total});
         });
     }
 
-    // ── Sync (Firestore → Room) ───────────────────────────────────────────────
+    // ── Sync Firestore → Room ─────────────────────────────────────────────────
 
     public void syncFromFirestore(Callback<Void> callback) {
-        collection().get()
-                .addOnSuccessListener(snapshot -> {
-                    executor.execute(() -> {
-                        localDao.deleteAll();
-                        for (QueryDocumentSnapshot doc : snapshot) {
-                            Medicine m = fromMap(doc);
-                            if (m != null) localDao.insert(m);
-                        }
-                        Log.d(TAG, "Meds sync complete: " + snapshot.size());
-                        if (callback != null) callback.onResult(null);
-                    });
-                })
+        CollectionReference col = collection();
+        if (col == null) {
+            Log.w(TAG, "syncFromFirestore: no signed-in user.");
+            if (callback != null) callback.onError("Not signed in.");
+            return;
+        }
+
+        Log.d(TAG, "Syncing from: users/" + getCurrentUid() + "/" + COLLECTION);
+
+        col.get()
+                .addOnSuccessListener(snapshot -> executor.execute(() -> {
+                    localDao.deleteAll();
+                    for (QueryDocumentSnapshot doc : snapshot) {
+                        Medicine m = fromMap(doc);
+                        if (m != null) localDao.insert(m);
+                    }
+                    Log.d(TAG, "Meds sync done: " + snapshot.size() + " items.");
+                    if (callback != null) callback.onResult(null);
+                }))
                 .addOnFailureListener(e -> {
                     Log.w(TAG, "Meds sync failed: " + e.getMessage());
                     if (callback != null) callback.onError(e.getMessage());
@@ -176,23 +190,24 @@ public class MedicineRepository {
 
     private Map<String, Object> toMap(Medicine m) {
         Map<String, Object> map = new HashMap<>();
-        map.put("name",     m.name);
-        map.put("dosage",   m.dosage);
-        map.put("mealTime", m.mealTime);
-        map.put("time",     m.time);
-        map.put("status",   m.status);
+        map.put("name",        m.name     != null ? m.name     : "");
+        map.put("dosage",      m.dosage   != null ? m.dosage   : "");
+        map.put("mealTime",    m.mealTime != null ? m.mealTime : "");
+        map.put("time",        m.time     != null ? m.time     : "");
+        map.put("status",      m.status   != null ? m.status   : "UPCOMING");
+        map.put("firestoreId", ""); // placeholder; updated after doc is created
         return map;
     }
 
     private Medicine fromMap(QueryDocumentSnapshot doc) {
         try {
-            Medicine m       = new Medicine();
-            m.name           = doc.getString("name");
-            m.dosage         = doc.getString("dosage");
-            m.mealTime       = doc.getString("mealTime");
-            m.time           = doc.getString("time");
-            m.status         = doc.getString("status");
-            m.firestoreId    = doc.getId();
+            Medicine m    = new Medicine();
+            m.name        = doc.getString("name");
+            m.dosage      = doc.getString("dosage");
+            m.mealTime    = doc.getString("mealTime");
+            m.time        = doc.getString("time");
+            m.status      = doc.getString("status");
+            m.firestoreId = doc.getId();
             return m;
         } catch (Exception e) {
             Log.e(TAG, "fromMap error: " + e.getMessage());
