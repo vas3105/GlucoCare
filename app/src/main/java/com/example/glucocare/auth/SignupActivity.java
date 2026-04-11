@@ -9,19 +9,22 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.glucocare.MainActivity;
 import com.example.glucocare.R;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 /**
  * SignupActivity — creates a new Firebase Auth account.
- * After signup → goes straight to MainActivity (no manual login needed).
+ *
+ * Key fix: after signup, uid is read immediately from the AuthResult
+ * (not from getCurrentUser() later) and passed via Intent to
+ * AccountSetupActivity so there is no timing issue.
  */
 public class SignupActivity extends AppCompatActivity {
 
-    private TextInputEditText etName, etEmail, etPassword, etConfirmPassword;
+    private TextInputEditText etEmail, etPassword, etConfirmPassword;
     private TextView          tvError, tvGoToLogin;
     private MaterialButton    btnCreateAccount;
     private ProgressBar       progressBar;
@@ -32,50 +35,35 @@ public class SignupActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
-
         auth = FirebaseAuth.getInstance();
         bindViews();
         setupListeners();
     }
 
-    // ── Bind ─────────────────────────────────────────────────────────────────
-
     private void bindViews() {
-        etName             = findViewById(R.id.etSignupName);
-        etEmail            = findViewById(R.id.etSignupEmail);
-        etPassword         = findViewById(R.id.etSignupPassword);
-        etConfirmPassword  = findViewById(R.id.etSignupConfirmPassword);
-        tvError            = findViewById(R.id.tvSignupError);
-        tvGoToLogin        = findViewById(R.id.tvGoToLogin);
-        btnCreateAccount   = findViewById(R.id.btnCreateAccount);
-        progressBar        = findViewById(R.id.progressSignup);
+        etEmail           = findViewById(R.id.etSignupEmail);
+        etPassword        = findViewById(R.id.etSignupPassword);
+        etConfirmPassword = findViewById(R.id.etSignupConfirmPassword);
+        tvError           = findViewById(R.id.tvSignupError);
+        tvGoToLogin       = findViewById(R.id.tvGoToLogin);
+        btnCreateAccount  = findViewById(R.id.btnCreateAccount);
+        progressBar       = findViewById(R.id.progressSignup);
     }
-
-    // ── Listeners ─────────────────────────────────────────────────────────────
 
     private void setupListeners() {
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
-
         btnCreateAccount.setOnClickListener(v -> attemptSignup());
-
         tvGoToLogin.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
     }
 
-    // ── Signup ────────────────────────────────────────────────────────────────
-
     private void attemptSignup() {
-        String name     = etName.getText().toString().trim();
-        String email    = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String confirm  = etConfirmPassword.getText().toString().trim();
+        String email   = etEmail.getText().toString().trim();
+        String password= etPassword.getText().toString().trim();
+        String confirm = etConfirmPassword.getText().toString().trim();
 
-        // Validate
-        if (TextUtils.isEmpty(name)) {
-            showError("Please enter your name.");  return;
-        }
         if (TextUtils.isEmpty(email)) {
             showError("Please enter your email."); return;
         }
@@ -90,16 +78,13 @@ public class SignupActivity extends AppCompatActivity {
 
         auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener(result -> {
-                    // Optionally update display name
-                    if (result.getUser() != null) {
-                        com.google.firebase.auth.UserProfileChangeRequest profile =
-                                new com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                                        .setDisplayName(name)
-                                        .build();
-                        result.getUser().updateProfile(profile);
-                    }
                     setLoading(false);
-                    goToMain();
+
+                    // ── Read uid directly from AuthResult — guaranteed non-null ──
+                    FirebaseUser user = result.getUser();
+                    String uid = (user != null) ? user.getUid() : "";
+
+                    goToAccountSetup(uid);
                 })
                 .addOnFailureListener(e -> {
                     setLoading(false);
@@ -107,14 +92,16 @@ public class SignupActivity extends AppCompatActivity {
                 });
     }
 
-    // ── Navigation ────────────────────────────────────────────────────────────
-
-    private void goToMain() {
-        startActivity(new Intent(this, MainActivity.class));
-        finish();
+    /**
+     * Passes uid as an Intent extra so AccountSetupActivity
+     * never needs to call getCurrentUser() itself.
+     */
+    private void goToAccountSetup(String uid) {
+        Intent intent = new Intent(this, AccountSetupActivity.class);
+        intent.putExtra("uid", uid);         // ← key fix
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
     }
-
-    // ── UI helpers ────────────────────────────────────────────────────────────
 
     private void setLoading(boolean loading) {
         btnCreateAccount.setEnabled(!loading);
@@ -129,9 +116,9 @@ public class SignupActivity extends AppCompatActivity {
 
     private String friendlyError(String raw) {
         if (raw == null) return "Signup failed. Please try again.";
-        if (raw.contains("email already"))  return "An account with this email already exists.";
-        if (raw.contains("badly formatted")) return "Please enter a valid email address.";
-        if (raw.contains("network"))         return "No internet connection.";
+        if (raw.contains("email already"))    return "An account with this email already exists.";
+        if (raw.contains("badly formatted"))  return "Please enter a valid email address.";
+        if (raw.contains("network"))          return "No internet connection.";
         return "Signup failed: " + raw;
     }
 }

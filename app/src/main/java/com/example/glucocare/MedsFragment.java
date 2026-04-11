@@ -7,6 +7,7 @@ import android.view.*;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,18 +19,6 @@ import com.google.android.material.snackbar.Snackbar;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * MedsFragment — medications screen.
- *
- * Data flow (every write → reload from Room → display):
- *  1. onViewCreated       → loadMedications() from Room
- *  2. First launch (empty) → seedMockData() saves 4 defaults → loadMedications()
- *  3. User adds a med     → saveMedicine() → loadMedications()
- *  4. User taps UPCOMING  → updateStatus() → loadMedications()
- *
- * Always reloading from Room after every write means the list
- * always reflects what is actually persisted — no stale state.
- */
 public class MedsFragment extends Fragment {
 
     // ── Views ────────────────────────────────────────────────────────────────
@@ -42,14 +31,11 @@ public class MedsFragment extends Fragment {
     private MedicineAdapter      adapter;
     private final List<Medicine> medicineList = new ArrayList<>();
     private MedicineRepository   medicineRepo;
-
-    /** Prevents seeding mock data more than once per app install */
-    private boolean mockDataSeeded = false;
+    private boolean              mockDataSeeded = false;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    @Nullable
-    @Override
+    @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
@@ -59,13 +45,11 @@ public class MedsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         medicineRepo = new MedicineRepository(requireContext());
-
         bindViews(view);
         setupRecyclerView();
         setupListeners();
-        loadMedications();   // always reload from Room on entry
+        loadMedications();
     }
 
     // ── Bind ─────────────────────────────────────────────────────────────────
@@ -86,68 +70,93 @@ public class MedsFragment extends Fragment {
         rvMedications.setAdapter(adapter);
         rvMedications.setHasFixedSize(false);
 
-        // Tap UPCOMING → mark TAKEN → persist → reload list
+        // Card tap → mark UPCOMING as TAKEN → reload
         adapter.setOnItemClickListener((medicine, position) -> {
             if (medicine.getStatusEnum() == Medicine.Status.UPCOMING) {
                 medicineRepo.updateStatus(medicine, Medicine.Status.TAKEN,
                         new MedicineRepository.Callback<Void>() {
-                            @Override
-                            public void onResult(Void v) {
+                            @Override public void onResult(Void v) {
                                 requireActivity().runOnUiThread(() -> {
-                                    loadMedications(); // reload from Room
+                                    loadMedications();
                                     snack("Marked as taken ✅");
                                 });
                             }
-                            @Override
-                            public void onError(String error) {
+                            @Override public void onError(String e) {
                                 requireActivity().runOnUiThread(() ->
                                         snack("Updated locally (syncing…)"));
                             }
                         });
             }
         });
+
+        // Trash icon tap → confirm dialog → delete
+        adapter.setOnDeleteClickListener((medicine, position) ->
+                confirmDelete(medicine, position));
     }
 
-    // ── Load from Room ────────────────────────────────────────────────────────
+    // ── Delete ────────────────────────────────────────────────────────────────
 
     /**
-     * The single source of truth for the displayed list.
-     * Every add / update calls this after finishing to refresh the UI.
+     * Shows a confirmation dialog before deleting.
+     * Prevents accidental deletions.
      */
+    private void confirmDelete(Medicine medicine, int position) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Remove Medication")
+                .setMessage("Remove \"" + medicine.name + "\" from your schedule?")
+                .setPositiveButton("Remove", (dialog, which) ->
+                        performDelete(medicine, position))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void performDelete(Medicine medicine, int position) {
+        medicineRepo.deleteMedicine(medicine, new MedicineRepository.Callback<Void>() {
+            @Override public void onResult(Void v) {
+                requireActivity().runOnUiThread(() -> {
+                    // Instant UI feedback — remove from list directly
+                    if (position >= 0 && position < medicineList.size()) {
+                        medicineList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                        adapter.notifyItemRangeChanged(position, medicineList.size());
+                    }
+                    updateAdherenceDisplay();
+                    snack(medicine.name + " removed from your schedule.");
+                });
+            }
+            @Override public void onError(String error) {
+                requireActivity().runOnUiThread(() ->
+                        snack("Could not delete. Please try again."));
+            }
+        });
+    }
+
+    // ── Load ──────────────────────────────────────────────────────────────────
+
     private void loadMedications() {
         medicineRepo.getAllMedications(new MedicineRepository.Callback<List<Medicine>>() {
-            @Override
-            public void onResult(List<Medicine> list) {
+            @Override public void onResult(List<Medicine> list) {
                 requireActivity().runOnUiThread(() -> {
-
                     if (list.isEmpty() && !mockDataSeeded) {
-                        // Very first launch — populate with defaults
                         mockDataSeeded = true;
                         seedMockData();
                         return;
                     }
-
                     medicineList.clear();
                     medicineList.addAll(list);
                     adapter.notifyDataSetChanged();
                     updateAdherenceDisplay();
                 });
             }
-            @Override
-            public void onError(String error) {
+            @Override public void onError(String error) {
                 requireActivity().runOnUiThread(() ->
                         snack("Could not load medications."));
             }
         });
     }
 
-    // ── Seed mock data (first launch only) ───────────────────────────────────
+    // ── Seed (first launch) ───────────────────────────────────────────────────
 
-    /**
-     * Saves 4 default medicines to Room + Firestore.
-     * Waits for all 4 callbacks before calling loadMedications()
-     * so the list reload happens after all inserts complete.
-     */
     private void seedMockData() {
         List<Medicine> defaults = new ArrayList<>();
         defaults.add(new Medicine("Metformin",     "500mg",    "Breakfast", "8:00 AM",  Medicine.Status.TAKEN));
@@ -156,32 +165,31 @@ public class MedsFragment extends Fragment {
         defaults.add(new Medicine("Metformin",      "500mg",    "Dinner",    "7:00 PM",  Medicine.Status.UPCOMING));
 
         final int[] doneCount = {0};
-        final int   total     = defaults.size();
-
         for (Medicine m : defaults) {
             medicineRepo.saveMedicine(m, new MedicineRepository.Callback<Void>() {
-                @Override public void onResult(Void v)       { checkDone(); }
-                @Override public void onError(String error)  { checkDone(); }
-
+                @Override public void onResult(Void v)      { checkDone(); }
+                @Override public void onError(String error) { checkDone(); }
                 private void checkDone() {
                     doneCount[0]++;
-                    if (doneCount[0] == total) {
-                        // All defaults saved — reload so Room IDs are populated
+                    if (doneCount[0] == defaults.size())
                         requireActivity().runOnUiThread(() -> loadMedications());
-                    }
                 }
             });
         }
     }
 
-    // ── Adherence display ─────────────────────────────────────────────────────
+    // ── Adherence ────────────────────────────────────────────────────────────
 
     private void updateAdherenceDisplay() {
         int total = medicineList.size();
-        if (total == 0) return;
+        if (total == 0) {
+            tvAdherencePercent.setText("0%");
+            progressAdherence.setProgress(0);
+            tvAdherenceMessage.setText("No medications scheduled today.");
+            return;
+        }
 
-        int taken  = 0;
-        int missed = 0;
+        int taken = 0, missed = 0;
         for (Medicine m : medicineList) {
             if (m.getStatusEnum() == Medicine.Status.TAKEN)  taken++;
             if (m.getStatusEnum() == Medicine.Status.MISSED) missed++;
@@ -192,8 +200,7 @@ public class MedsFragment extends Fragment {
 
         ObjectAnimator.ofInt(progressAdherence, "progress",
                         progressAdherence.getProgress(), percent)
-                .setDuration(900)
-                .start();
+                .setDuration(900).start();
 
         tvAdherenceMessage.setText(buildMessage(percent, taken, total, missed));
     }
@@ -205,24 +212,21 @@ public class MedsFragment extends Fragment {
             return "You've missed " + missed + " dose" + (missed > 1 ? "s" : "")
                     + " today. Your consistency is helping stabilize your glucose levels.";
         if (percent >= 50)
-            return "You're halfway there — " + taken + " of " + total
-                    + " doses taken. Try setting reminders for the rest.";
-        return "Your adherence needs attention. Only "
+            return "Halfway there — " + taken + " of " + total
+                    + " doses taken. Set reminders for the rest.";
+        return "Adherence needs attention. Only "
                 + taken + " of " + total + " doses taken today.";
     }
 
-    // ── Listeners ─────────────────────────────────────────────────────────────
+    // ── Add Medicine Dialog ───────────────────────────────────────────────────
 
     private void setupListeners() {
         btnAddNew.setOnClickListener(v -> showAddMedicineDialog());
     }
 
-    // ── Add Medicine Dialog ───────────────────────────────────────────────────
-
     private void showAddMedicineDialog() {
         Dialog dialog = new Dialog(requireContext());
         dialog.setContentView(R.layout.dialog_add_medicine);
-
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog_rounded);
             dialog.getWindow().setLayout(
@@ -245,8 +249,7 @@ public class MedsFragment extends Fragment {
             String mealTime = etMealTime.getText().toString().trim();
             String time     = etTime.getText().toString().trim();
 
-            if (name.isEmpty() || dosage.isEmpty()
-                    || mealTime.isEmpty() || time.isEmpty()) {
+            if (name.isEmpty() || dosage.isEmpty() || mealTime.isEmpty() || time.isEmpty()) {
                 snack("Please fill in all fields.");
                 return;
             }
@@ -254,25 +257,20 @@ public class MedsFragment extends Fragment {
             Medicine newMed = new Medicine(
                     name, dosage, mealTime, time, Medicine.Status.UPCOMING);
 
-            // Save → reload from Room → display
-            // This guarantees the new entry appears with its real Room ID
             medicineRepo.saveMedicine(newMed, new MedicineRepository.Callback<Void>() {
-                @Override
-                public void onResult(Void result) {
+                @Override public void onResult(Void result) {
                     requireActivity().runOnUiThread(() -> {
-                        loadMedications();                       // ← key line
+                        loadMedications();
                         snack(name + " added to your schedule.");
                     });
                 }
-                @Override
-                public void onError(String error) {
+                @Override public void onError(String error) {
                     requireActivity().runOnUiThread(() -> {
                         loadMedications();
                         snack(name + " saved locally (will sync when online).");
                     });
                 }
             });
-
             dialog.dismiss();
         });
 

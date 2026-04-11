@@ -72,7 +72,6 @@
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
-            <!-- Status badge -->
             <TextView
                 android:id="@+id/tvMedStatus"
                 android:layout_width="wrap_content"
@@ -87,6 +86,19 @@
                 android:letterSpacing="0.08"
                 android:background="@drawable/bg_status_badge" />
         </LinearLayout>
+
+        <!-- Delete (trash) button -->
+        <ImageButton
+            android:id="@+id/btnDeleteMed"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_delete_button"
+            android:src="@drawable/ic_delete"
+            app:tint="#FF3B30"
+            android:contentDescription="Delete medication"
+            android:scaleType="centerInside"
+            android:padding="8dp" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

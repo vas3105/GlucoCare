@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -15,31 +16,39 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 /**
- * MedicineAdapter — binds Medicine objects to item_medicine.xml cards.
+ * MedicineAdapter — binds Medicine objects to item_medicine.xml.
  *
- * Medicine uses public fields (not getters), so we access
- * medicine.name, medicine.time, medicine.status directly.
+ * Two callbacks:
+ *   onItemClick   → called when the card body is tapped (mark as taken)
+ *   onDeleteClick → called when the trash icon is tapped (delete medicine)
  */
 public class MedicineAdapter extends RecyclerView.Adapter<MedicineAdapter.MedViewHolder> {
 
-    // ── Callback ─────────────────────────────────────────────────────────────
+    // ── Callbacks ─────────────────────────────────────────────────────────────
 
     public interface OnItemClickListener {
         void onItemClick(Medicine medicine, int position);
     }
 
-    private final Context          context;
-    private final List<Medicine>   medicines;
-    private OnItemClickListener    listener;
+    public interface OnDeleteClickListener {
+        void onDeleteClick(Medicine medicine, int position);
+    }
+
+    // ── Fields ────────────────────────────────────────────────────────────────
+
+    private final Context        context;
+    private final List<Medicine> medicines;
+
+    private OnItemClickListener   itemClickListener;
+    private OnDeleteClickListener deleteClickListener;
 
     public MedicineAdapter(Context context, List<Medicine> medicines) {
         this.context   = context;
         this.medicines = medicines;
     }
 
-    public void setOnItemClickListener(OnItemClickListener listener) {
-        this.listener = listener;
-    }
+    public void setOnItemClickListener(OnItemClickListener l)   { this.itemClickListener   = l; }
+    public void setOnDeleteClickListener(OnDeleteClickListener l) { this.deleteClickListener = l; }
 
     // ── RecyclerView.Adapter ──────────────────────────────────────────────────
 
@@ -55,8 +64,17 @@ public class MedicineAdapter extends RecyclerView.Adapter<MedicineAdapter.MedVie
     public void onBindViewHolder(@NonNull MedViewHolder holder, int position) {
         Medicine med = medicines.get(position);
         holder.bind(med);
+
+        // Card body tap → mark as taken
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onItemClick(med, holder.getAdapterPosition());
+            if (itemClickListener != null)
+                itemClickListener.onItemClick(med, holder.getAdapterPosition());
+        });
+
+        // Trash icon tap → delete (intercept touch so card click doesn't fire)
+        holder.btnDelete.setOnClickListener(v -> {
+            if (deleteClickListener != null)
+                deleteClickListener.onDeleteClick(med, holder.getAdapterPosition());
         });
     }
 
@@ -67,8 +85,9 @@ public class MedicineAdapter extends RecyclerView.Adapter<MedicineAdapter.MedVie
 
     class MedViewHolder extends RecyclerView.ViewHolder {
 
-        private final ImageView ivMedIcon;
-        private final TextView  tvMedName, tvMedDosage, tvMedTime, tvMedStatus;
+        final ImageView   ivMedIcon;
+        final TextView    tvMedName, tvMedDosage, tvMedTime, tvMedStatus;
+        final ImageButton btnDelete;
 
         MedViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -77,16 +96,15 @@ public class MedicineAdapter extends RecyclerView.Adapter<MedicineAdapter.MedVie
             tvMedDosage = itemView.findViewById(R.id.tvMedDosage);
             tvMedTime   = itemView.findViewById(R.id.tvMedTime);
             tvMedStatus = itemView.findViewById(R.id.tvMedStatus);
+            btnDelete   = itemView.findViewById(R.id.btnDeleteMed);
         }
 
         void bind(Medicine med) {
-            // ── Direct field access (Medicine uses public fields, not getters) ──
             tvMedName.setText(med.name);
-            tvMedDosage.setText(med.getDosageLabel());  // helper method — still valid
+            tvMedDosage.setText(med.getDosageLabel());
             tvMedTime.setText(med.time);
-            ivMedIcon.setImageResource(med.getIconRes()); // helper method — still valid
-
-            applyStatusBadge(med.getStatusEnum()); // helper method — still valid
+            ivMedIcon.setImageResource(med.getIconRes());
+            applyStatusBadge(med.getStatusEnum());
         }
 
         private void applyStatusBadge(Medicine.Status status) {
@@ -97,14 +115,12 @@ public class MedicineAdapter extends RecyclerView.Adapter<MedicineAdapter.MedVie
                     tvMedStatus.getBackground().mutate()
                             .setTint(ContextCompat.getColor(context, R.color.status_taken));
                     break;
-
                 case MISSED:
                     tvMedStatus.setText("MISSED");
                     tvMedStatus.setTextColor(Color.WHITE);
                     tvMedStatus.getBackground().mutate()
                             .setTint(ContextCompat.getColor(context, R.color.status_missed));
                     break;
-
                 case UPCOMING:
                 default:
                     tvMedStatus.setText("UPCOMING");
