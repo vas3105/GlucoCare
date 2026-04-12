@@ -315,13 +315,13 @@ public class LogsFragment extends Fragment {
     private void launchGallery() { galleryPickerLauncher.launch("image/*"); }
 
     private void runOcr(Uri uri) {
-        // Alternative to deprecated ProgressDialog: Custom AlertDialog with ProgressBar
+        // Tesseract runs on-device — typically 1-3 seconds
         ProgressBar progressBar = new ProgressBar(requireContext(), null, android.R.attr.progressBarStyleLarge);
         progressBar.setPadding(0, 40, 0, 40);
 
         AlertDialog progressDialog = new AlertDialog.Builder(requireContext())
                 .setTitle("Reading Glucometer")
-                .setMessage("Analysing with Gemini AI…")
+                .setMessage("Scanning Display")
                 .setView(progressBar)
                 .setCancelable(false)
                 .create();
@@ -329,6 +329,7 @@ public class LogsFragment extends Fragment {
         progressDialog.show();
 
         ocrHelper.extractGlucoseValue(requireContext(), uri, new OcrHelper.OcrCallback() {
+
             @Override
             public void onSuccess(int glucoseValue) {
                 requireActivity().runOnUiThread(() -> {
@@ -344,8 +345,10 @@ public class LogsFragment extends Fragment {
                     new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                             .setTitle("Could Not Read Value")
                             .setMessage(msg)
-                            .setPositiveButton("Try Again", (d, w) -> showScanOptions())
-                            .setNegativeButton("Enter Manually", (d, w) -> etGlucoseLevel.requestFocus())
+                            .setPositiveButton("Try Again",
+                                    (d, w) -> showScanOptions())
+                            .setNegativeButton("Enter Manually",
+                                    (d, w) -> etGlucoseLevel.requestFocus())
                             .show();
                 });
             }
@@ -363,7 +366,7 @@ public class LogsFragment extends Fragment {
         layout.setPadding(60, 24, 60, 8);
 
         android.widget.TextView label = new android.widget.TextView(requireContext());
-        label.setText("Gemini detected this value.\nCorrect it if needed:");
+        label.setText("Value detected — correct if needed:");
         label.setTextSize(13f);
         label.setTextColor(
                 androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_muted));
