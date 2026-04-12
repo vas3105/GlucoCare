@@ -315,6 +315,7 @@ public class LogsFragment extends Fragment {
     private void launchGallery() { galleryPickerLauncher.launch("image/*"); }
 
     private void runOcr(Uri uri) {
+<<<<<<< HEAD
         toast("Processing image…");
         ocrHelper.extractGlucoseValue(requireContext(), uri, new OcrHelper.OcrCallback() {
             @Override public void onSuccess(int v) {
@@ -323,10 +324,107 @@ public class LogsFragment extends Fragment {
             }
             @Override public void onFailure(String msg) {
                 requireActivity().runOnUiThread(() -> snack("OCR: " + msg));
+=======
+        // Alternative to deprecated ProgressDialog: Custom AlertDialog with ProgressBar
+        ProgressBar progressBar = new ProgressBar(requireContext(), null, android.R.attr.progressBarStyleLarge);
+        progressBar.setPadding(0, 40, 0, 40);
+
+        AlertDialog progressDialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Reading Glucometer")
+                .setMessage("Analysing with Gemini AI…")
+                .setView(progressBar)
+                .setCancelable(false)
+                .create();
+
+        progressDialog.show();
+
+        ocrHelper.extractGlucoseValue(requireContext(), uri, new OcrHelper.OcrCallback() {
+            @Override
+            public void onSuccess(int glucoseValue) {
+                requireActivity().runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    showOcrConfirmDialog(glucoseValue);
+                });
+            }
+
+            @Override
+            public void onFailure(String msg) {
+                requireActivity().runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Could Not Read Value")
+                            .setMessage(msg)
+                            .setPositiveButton("Try Again", (d, w) -> showScanOptions())
+                            .setNegativeButton("Enter Manually", (d, w) -> etGlucoseLevel.requestFocus())
+                            .show();
+                });
+>>>>>>> origin/master
             }
         });
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Shows a confirmation dialog after OCR detects a value.
+     * Lets the user verify and correct the number before it fills the field.
+     * This is critical for glucometer screens where OCR can be off by a digit.
+     */
+    private void showOcrConfirmDialog(int detectedValue) {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(60, 24, 60, 8);
+
+        android.widget.TextView label = new android.widget.TextView(requireContext());
+        label.setText("Gemini detected this value.\nCorrect it if needed:");
+        label.setTextSize(13f);
+        label.setTextColor(
+                androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_muted));
+        layout.addView(label);
+
+        android.widget.EditText etConfirm = new android.widget.EditText(requireContext());
+        etConfirm.setText(String.valueOf(detectedValue));
+        etConfirm.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        etConfirm.setTextSize(36f);
+        etConfirm.setTextColor(
+                androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary));
+        etConfirm.setGravity(android.view.Gravity.CENTER);
+        layout.addView(etConfirm);
+
+        android.widget.TextView unit = new android.widget.TextView(requireContext());
+        unit.setText("mg/dL");
+        unit.setTextSize(13f);
+        unit.setGravity(android.view.Gravity.CENTER);
+        unit.setTextColor(
+                androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_muted));
+        layout.addView(unit);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Confirm Reading ✓")
+                .setView(layout)
+                .setPositiveButton("Use This Value", (dialog, which) -> {
+                    String input = etConfirm.getText().toString().trim();
+                    try {
+                        int confirmed = Integer.parseInt(input);
+                        if (confirmed < 20 || confirmed > 600) {
+                            snack("Value must be between 20 and 600 mg/dL.");
+                            return;
+                        }
+                        setGlucose(confirmed);
+                        updateAiInsight();
+                        snack("Glucose set to " + confirmed + " mg/dL ✓");
+                    } catch (NumberFormatException e) {
+                        snack("Invalid number — please enter manually.");
+                    }
+                })
+                .setNegativeButton("Scan Again", (d, w) -> showScanOptions())
+                .setNeutralButton("Cancel", null)
+                .show();
+
+        etConfirm.post(etConfirm::selectAll);
+    }
+
+>>>>>>> origin/master
     // ── Save ──────────────────────────────────────────────────────────────────
 
     private void saveReading() {
@@ -374,4 +472,8 @@ public class LogsFragment extends Fragment {
 
     private void toast(String msg) { Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show(); }
     private void snack(String msg) { Snackbar.make(requireView(), msg, Snackbar.LENGTH_LONG).show(); }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/master

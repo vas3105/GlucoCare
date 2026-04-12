@@ -45,6 +45,7 @@
                 app:cornerRadius="16dp"/>
         </RelativeLayout>
 
+<<<<<<< HEAD
         <Button
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"
@@ -59,6 +60,8 @@
             android:textStyle="bold"
             style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
 
+=======
+>>>>>>> origin/master
         <!-- Profile Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -73,6 +76,31 @@
                 android:padding="24dp"
                 android:gravity="center">
 
+<<<<<<< HEAD
+=======
+                <FrameLayout
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_marginBottom="16dp">
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@android:color/darker_gray"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.App.CornerSize50Percent"
+                        android:padding="2dp"
+                        app:strokeColor="#E8EEF5"
+                        app:strokeWidth="2dp"/>
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="bottom|end"
+                        android:src="@android:drawable/ic_input_add"
+                        android:background="@drawable/circle_bg_green"
+                        android:padding="4dp"
+                        app:tint="@android:color/white"/>
+                </FrameLayout>
+
+>>>>>>> origin/master
                 <TextView
                     android:id="@+id/profileName"
                     android:layout_width="wrap_content"
@@ -153,13 +181,21 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+<<<<<<< HEAD
             android:text="Emergency Contact"
+=======
+            android:text="Emergency Contacts"
+>>>>>>> origin/master
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="#1A2B4C"
             android:layout_marginBottom="16dp"/>
 
+<<<<<<< HEAD
         <!-- Contact Row -->
+=======
+        <!-- Contact 1 -->
+>>>>>>> origin/master
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -194,14 +230,61 @@
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp"/>
                 </RelativeLayout>
+<<<<<<< HEAD
 
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PHONE NUMBER" android:textSize="10sp" android:textColor="#707E94"/>
                     <TextView android:id="@+id/tvEmergencyPhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="(555) 123-4567" android:textColor="#3D79F2" android:textStyle="bold" android:textSize="16sp"/>
+=======
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FULL NAME" android:textSize="10sp" android:textColor="#707E94"/>
+                <TextView android:id="@+id/tvContactName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sarah Miller" android:textStyle="bold" android:textColor="#1A2B4C" android:layout_marginBottom="8dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RELATIONSHIP" android:textSize="10sp" android:textColor="#707E94"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Spouse" android:textColor="#1A2B4C"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PHONE" android:textSize="10sp" android:textColor="#707E94"/>
+                        <TextView android:id="@+id/tvEmergencyPhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="(555) 123-4567" android:textColor="#3D79F2" android:textStyle="bold"/>
+                    </LinearLayout>
+>>>>>>> origin/master
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+<<<<<<< HEAD
+=======
+        <!-- Connectivity -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="16dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                   <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_share" app:tint="#1A2B4C"/>
+                   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Connectivity" android:textStyle="bold" android:textColor="#1A2B4C" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:background="@drawable/rounded_bg_white" android:padding="12dp">
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cloud Sync" android:textStyle="bold" android:textColor="#1A2B4C"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Real-time backup" android:textSize="11sp" android:textColor="#707E94"/>
+                    </LinearLayout>
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:checked="true"/>
+                </RelativeLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+>>>>>>> origin/master
         <!-- Emergency Alert Settings -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -219,14 +302,44 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="HIGH PRIORITY" android:textSize="9sp" android:textStyle="bold" android:textColor="#D32F2F" android:background="@drawable/tag_bg_red" android:padding="6dp"/>
                 </RelativeLayout>
 
+<<<<<<< HEAD
+=======
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inactivity Timeout" android:textStyle="bold" android:textColor="#1A2B4C"/>
+                    <TextView android:id="@+id/tvTimeoutValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="60 Minutes" android:textColor="#3D79F2" android:background="@drawable/tag_bg_blue" android:padding="6dp" android:textSize="11sp"/>
+                </RelativeLayout>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderTimeout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="30"
+                    android:valueTo="240"
+                    android:value="60"
+                    app:thumbColor="#3D79F2"
+                    app:trackColorActive="#3D79F2"/>
+
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30 MIN" android:textSize="10sp" android:textColor="#707E94"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="4 HOURS" android:textSize="10sp" android:textColor="#707E94"/>
+                </RelativeLayout>
+
+>>>>>>> origin/master
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:background="#F0F4F8"
+<<<<<<< HEAD
                     android:padding="12dp">
                     <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@android:drawable/ic_dialog_info" app:tint="#5A719D"/>
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="If no glucose reading is detected within 1 hour of your scheduled meal times (Breakfast, Lunch, Dinner), GlucoCare will automatically notify your Primary Contact." android:textSize="10sp" android:textColor="#5A719D" android:layout_marginStart="8dp"/>
+=======
+                    android:padding="12dp"
+                    android:layout_marginTop="16dp">
+                    <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@android:drawable/ic_dialog_info" app:tint="#5A719D"/>
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="If no glucose reading is detected for over 1 hour, GlucoCare will automatically notify your Primary Contact via SMS and Phone Call with your last known GPS location." android:textSize="10sp" android:textColor="#5A719D" android:layout_marginStart="8dp"/>
+>>>>>>> origin/master
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

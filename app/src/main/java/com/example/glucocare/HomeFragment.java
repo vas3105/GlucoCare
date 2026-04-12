@@ -3,6 +3,7 @@ package com.example.glucocare;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+<<<<<<< HEAD
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -10,19 +11,34 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.telephony.SmsManager;
 import android.util.Log;
+=======
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.telephony.SmsManager;
+>>>>>>> origin/master
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+<<<<<<< HEAD
+=======
+import android.widget.EditText;
+>>>>>>> origin/master
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+<<<<<<< HEAD
+=======
+import androidx.appcompat.app.AlertDialog;
+>>>>>>> origin/master
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+<<<<<<< HEAD
 import com.example.glucocare.repository.UserRepository;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -55,11 +71,35 @@ public class HomeFragment extends Fragment {
     private ExecutorService executorService = Executors.newSingleThreadExecutor();
     private UserRepository userRepository;
 
+=======
+import com.google.android.material.card.MaterialCardView;
+
+import java.util.Calendar;
+
+public class HomeFragment extends Fragment {
+
+    private static final int SMS_PERMISSION_CODE = 101;
+    private TextView tvWelcome, tvLatestLevel, tvAvgLevel, tvAlertTitle, tvAlertDesc;
+    private MaterialCardView cardEmergency;
+    private Button btnSOS, btnLog, btnLogMeds;
+    
+    // Static fields to simulate data
+    public static float lastReading = 0;
+    public static long lastUpdateTimestamp = System.currentTimeMillis();
+    public static String emergencyPhone = "5551234567"; 
+    public static int inactivityTimeoutMinutes = 60;
+
+    private Handler monitoringHandler = new Handler();
+>>>>>>> origin/master
     private Runnable monitoringTask = new Runnable() {
         @Override
         public void run() {
             checkInactivityAndAlert();
+<<<<<<< HEAD
             monitoringHandler.postDelayed(this, 10000); 
+=======
+            monitoringHandler.postDelayed(this, 30000); // Check every 30 seconds
+>>>>>>> origin/master
         }
     };
 
@@ -71,7 +111,10 @@ public class HomeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+<<<<<<< HEAD
         userRepository = new UserRepository();
+=======
+>>>>>>> origin/master
 
         tvWelcome = view.findViewById(R.id.tvWelcome);
         tvLatestLevel = view.findViewById(R.id.tvLatestLevel);
@@ -80,6 +123,7 @@ public class HomeFragment extends Fragment {
         tvAlertTitle = view.findViewById(R.id.tvAlertTitle);
         tvAlertDesc = view.findViewById(R.id.tvAlertDesc);
         btnSOS = view.findViewById(R.id.btnEmergencySOS);
+<<<<<<< HEAD
         glucoseChart = view.findViewById(R.id.glucoseChart);
 
         setupChart();
@@ -139,6 +183,18 @@ public class HomeFragment extends Fragment {
         glucoseChart.getAxisLeft().setTextColor(Color.parseColor("#707E94"));
         glucoseChart.getAxisLeft().setDrawGridLines(true);
         glucoseChart.getAxisRight().setEnabled(false);
+=======
+        btnLog = view.findViewById(R.id.btnLogGlucose);
+        btnLogMeds = view.findViewById(R.id.btnLogMeds);
+
+        refreshUI();
+
+        btnLog.setOnClickListener(v -> showLogDialog());
+        btnLogMeds.setOnClickListener(v -> showLogMedsDialog());
+        btnSOS.setOnClickListener(v -> triggerManualSOS());
+
+        checkSmsPermission();
+>>>>>>> origin/master
     }
 
     private void checkSmsPermission() {
@@ -150,9 +206,13 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+<<<<<<< HEAD
         refreshUI();
         monitoringHandler.post(monitoringTask);
         loadChartData();
+=======
+        monitoringHandler.post(monitoringTask);
+>>>>>>> origin/master
     }
 
     @Override
@@ -162,6 +222,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void refreshUI() {
+<<<<<<< HEAD
         if (ProfileFragment.userName != null) {
             String nameDisplay = ProfileFragment.userName.isEmpty() ? "User" : ProfileFragment.userName.split(" ")[0];
             tvWelcome.setText("Welcome, " + nameDisplay);
@@ -377,6 +438,96 @@ public class HomeFragment extends Fragment {
         }
         Intent intent = new Intent(Intent.ACTION_DIAL);
         intent.setData(Uri.parse("tel:" + phone));
+=======
+        tvWelcome.setText("Welcome, " + ProfileFragment.userName.split(" ")[0]);
+        if (lastReading > 0) {
+            tvLatestLevel.setText(String.valueOf(lastReading));
+            checkGlucoseAlert(lastReading);
+        } else {
+            tvLatestLevel.setText("--");
+            cardEmergency.setVisibility(View.GONE);
+        }
+    }
+
+    private void checkGlucoseAlert(float level) {
+        if (level < 70 || level > 180) {
+            cardEmergency.setVisibility(View.VISIBLE);
+            tvAlertTitle.setText("CRITICAL LEVEL");
+            tvAlertDesc.setText("Abnormal glucose levels detected. Please take immediate action or use SOS.");
+        } else {
+            cardEmergency.setVisibility(View.GONE);
+        }
+    }
+
+    private void checkInactivityAndAlert() {
+        long diffMinutes = (System.currentTimeMillis() - lastUpdateTimestamp) / (60 * 1000);
+        
+        Calendar now = Calendar.getInstance();
+        int hour = now.get(Calendar.HOUR_OF_DAY);
+        boolean isNearMealTime = (hour >= 7 && hour <= 9) || (hour >= 12 && hour <= 14) || (hour >= 18 && hour <= 20);
+
+        if (isNearMealTime && diffMinutes >= inactivityTimeoutMinutes) {
+            cardEmergency.setVisibility(View.VISIBLE);
+            tvAlertTitle.setText("INACTIVITY REMINDER");
+            tvAlertDesc.setText("No update detected near meal time. Please log your levels for safety.");
+            
+            if (diffMinutes >= inactivityTimeoutMinutes + 5) {
+                tvAlertTitle.setText("LACK OF ACTIVITY ALERT");
+                tvAlertDesc.setText("Critical inactivity! Emergency message sent to " + emergencyPhone);
+                sendEmergencySms();
+            }
+        }
+    }
+
+    private void sendEmergencySms() {
+        try {
+            if (getContext() != null && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+                SmsManager smsManager = SmsManager.getDefault();
+                String message = "GlucoCare AI Alert: Lack of activity detected for patient " + ProfileFragment.userName + ". Please check immediately.";
+                smsManager.sendTextMessage(emergencyPhone, null, message, null, null);
+                Toast.makeText(getContext(), "Emergency Alert Sent via SMS", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            // Log error
+        }
+    }
+
+    private void showLogDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Log Glucose Level");
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_log_glucose, null);
+        EditText etLevel = dialogView.findViewById(R.id.etGlucoseLevel);
+        builder.setView(dialogView);
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String val = etLevel.getText().toString();
+            if (!val.isEmpty()) {
+                lastReading = Float.parseFloat(val);
+                lastUpdateTimestamp = System.currentTimeMillis();
+                refreshUI();
+                Toast.makeText(getContext(), "Reading logged", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void showLogMedsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Log Medication");
+        builder.setMessage("Did you take your prescribed medication?");
+        builder.setPositiveButton("Yes, Logged", (dialog, which) -> {
+            lastUpdateTimestamp = System.currentTimeMillis();
+            cardEmergency.setVisibility(View.GONE);
+            Toast.makeText(getContext(), "Medication update received", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void triggerManualSOS() {
+        Intent intent = new Intent(Intent.ACTION_DIAL);
+        intent.setData(Uri.parse("tel:" + emergencyPhone));
+>>>>>>> origin/master
         startActivity(intent);
     }
 }

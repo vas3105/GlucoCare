@@ -59,7 +59,14 @@ dependencies {
 
 // Room
     implementation ("androidx.room:room-runtime:2.6.1")
+<<<<<<< HEAD
     
     // MPAndroidChart
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+=======
+    // OkHttp for REST calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+// Gson for JSON
+    implementation("com.google.code.gson:gson:2.10.1")
+>>>>>>> origin/master
 }
