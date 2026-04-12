@@ -3,10 +3,6 @@ package com.example.glucocare;
 /**
  * UserProfile — stores the account setup information.
  * Saved to Firestore at: users/{uid}/profile/data
- <<<<<<< HEAD
- =======
- * Not stored in Room (no need for offline access — just display data).
- >>>>>>> origin/master
  */
 public class UserProfile {
 
@@ -20,11 +16,10 @@ public class UserProfile {
     // New fields for trends and logging
     public float weight;
     public String height;
-    public int breakfastTime;
+    public int breakfastTime; // Minutes from midnight
     public int lunchTime;
     public int dinnerTime;
     public String emergencyPhone;
-
 
     public UserProfile() {} // required for Firestore deserialization
 
@@ -40,10 +35,9 @@ public class UserProfile {
         // Defaults
         this.weight = 184;
         this.height = "5'11";
-        this.breakfastTime = 480;
-        this.lunchTime = 780;
-        this.dinnerTime = 1140;
+        this.breakfastTime = 480;  // 08:00
+        this.lunchTime = 780;      // 13:00
+        this.dinnerTime = 1140;    // 19:00
         this.emergencyPhone = "5551234567";
-
     }
 }
