@@ -19,55 +19,37 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-/**
- * AccountSetupActivity — shown after new account creation.
- *
- * Key fix: uid is received via Intent extra from SignupActivity.
- * We never call FirebaseAuth.getCurrentUser() here — that was
- * causing the empty-string uid and silent Firestore write failure.
- */
 public class AccountSetupActivity extends AppCompatActivity {
 
     private static final String TAG = "AccountSetup";
 
-    // ── Views ─────────────────────────────────────────────────────────────────
-    private TextInputEditText etName, etAge, etDoctorName;
+    private TextInputEditText etName, etAge, etDoctorName, etEmergencyPhone;
     private TextView          tvSetupError, tvSkipSetup;
     private MaterialButton    btnCompleteSetup;
     private ProgressBar       progressSetup;
 
-    // Gender cards
     private LinearLayout cardMale, cardFemale, cardOther;
     private TextView     tvMale, tvFemale, tvOther;
     private String       selectedGender = "Male";
 
-    // Diabetes type cards
     private LinearLayout cardType1, cardType2, cardGestational;
     private TextView     tvType1, tvType2, tvGestational;
     private String       selectedDiabetesType = "";
 
-    // ── Data ─────────────────────────────────────────────────────────────────
-    private String            uid;       // received from SignupActivity via Intent
+    private String            uid;
     private FirebaseFirestore firestore;
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_accountsetup);
 
-        // ── Read uid from Intent — this is always valid ───────────────────────
         uid = getIntent().getStringExtra("uid");
 
         if (TextUtils.isEmpty(uid)) {
-            // Safety fallback: if uid somehow missing, skip to main
-            Log.e(TAG, "uid missing from Intent — skipping setup.");
             goToMain();
             return;
         }
-
-        Log.d(TAG, "Setting up profile for uid: " + uid);
 
         firestore = FirebaseFirestore.getInstance();
 
@@ -77,11 +59,10 @@ public class AccountSetupActivity extends AppCompatActivity {
         setupListeners();
     }
 
-    // ── Bind ─────────────────────────────────────────────────────────────────
-
     private void bindViews() {
         etName           = findViewById(R.id.etProfileName);
         etAge            = findViewById(R.id.etProfileAge);
+        etEmergencyPhone = findViewById(R.id.etEmergencyPhone);
         etDoctorName     = findViewById(R.id.etDoctorName);
         tvSetupError     = findViewById(R.id.tvSetupError);
         tvSkipSetup      = findViewById(R.id.tvSkipSetup);
@@ -103,10 +84,8 @@ public class AccountSetupActivity extends AppCompatActivity {
         tvGestational    = findViewById(R.id.tvGestational);
     }
 
-    // ── Gender selector ───────────────────────────────────────────────────────
-
     private void setupGenderSelector() {
-        selectGender("Male"); // default
+        selectGender("Male");
         cardMale.setOnClickListener(v   -> selectGender("Male"));
         cardFemale.setOnClickListener(v -> selectGender("Female"));
         cardOther.setOnClickListener(v  -> selectGender("Prefer not to say"));
@@ -118,8 +97,6 @@ public class AccountSetupActivity extends AppCompatActivity {
         setCardState(cardFemale, tvFemale, "Female".equals(gender));
         setCardState(cardOther,  tvOther,  "Prefer not to say".equals(gender));
     }
-
-    // ── Diabetes type selector ────────────────────────────────────────────────
 
     private void setupDiabetesTypeSelector() {
         cardType1.setOnClickListener(v       -> selectDiabetesType("Type 1"));
@@ -134,8 +111,6 @@ public class AccountSetupActivity extends AppCompatActivity {
         setCardState(cardGestational, tvGestational, "Gestational".equals(type));
     }
 
-    // ── Shared card state helper ──────────────────────────────────────────────
-
     private void setCardState(LinearLayout card, TextView label, boolean selected) {
         card.setBackgroundResource(selected
                 ? R.drawable.bg_gender_option_selected
@@ -144,68 +119,66 @@ public class AccountSetupActivity extends AppCompatActivity {
                 selected ? R.color.secondary : R.color.text_muted));
     }
 
-    // ── Listeners ─────────────────────────────────────────────────────────────
-
     private void setupListeners() {
         btnCompleteSetup.setOnClickListener(v -> attemptSave());
         tvSkipSetup.setOnClickListener(v -> goToMain());
     }
 
-    // ── Save ──────────────────────────────────────────────────────────────────
-
     private void attemptSave() {
         String name       = etName.getText().toString().trim();
-        String age        = etAge.getText().toString().trim();
+        String ageStr     = etAge.getText().toString().trim();
+        String phone      = etEmergencyPhone.getText().toString().trim();
         String doctorName = etDoctorName.getText().toString().trim();
 
-        // Validate
         if (TextUtils.isEmpty(name)) {
             showError("Please enter your name."); return;
         }
-        if (TextUtils.isEmpty(age)) {
+        if (TextUtils.isEmpty(ageStr)) {
             showError("Please enter your age."); return;
+        }
+        if (TextUtils.isEmpty(phone)) {
+            showError("Please enter emergency phone number."); return;
         }
         if (TextUtils.isEmpty(selectedDiabetesType)) {
             showError("Please select your diabetes type."); return;
         }
 
+        try {
+            Integer.parseInt(ageStr);
+        } catch (NumberFormatException e) {
+            showError("Please enter a valid age.");
+            return;
+        }
+
         setLoading(true);
 
         UserProfile profile = new UserProfile(
-                uid, name, age,
+                uid, name, ageStr,
                 selectedGender,
                 selectedDiabetesType,
                 TextUtils.isEmpty(doctorName) ? "" : doctorName
         );
+        profile.emergencyPhone = phone;
 
-        Log.d(TAG, "Saving profile to: users/" + uid + "/profile/data");
-
-        // ── Write to Firestore using the uid from Intent ──────────────────────
         firestore.collection("users")
-                .document(uid)              // ← always valid, came from AuthResult
+                .document(uid)
                 .collection("profile")
                 .document("data")
                 .set(profile)
                 .addOnSuccessListener(v -> {
-                    Log.d(TAG, "Profile saved successfully.");
                     setLoading(false);
                     goToMain();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Profile save failed: " + e.getMessage());
                     setLoading(false);
                     showError("Save failed: " + e.getMessage());
                 });
     }
 
-    // ── Navigation ────────────────────────────────────────────────────────────
-
     private void goToMain() {
         startActivity(new Intent(this, MainActivity.class));
         finish();
     }
-
-    // ── UI helpers ────────────────────────────────────────────────────────────
 
     private void setLoading(boolean loading) {
         btnCompleteSetup.setEnabled(!loading);

@@ -120,6 +120,37 @@
                 android:textColor="@color/primary" />
         </com.google.android.material.textfield.TextInputLayout>
 
+<<<<<<< HEAD
+        <!-- ── Emergency Contact Phone ────────────────────────────────── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Emergency Contact Number"
+            android:textColor="@color/primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:hint="e.g. 555-0123"
+            app:boxCornerRadiusTopStart="14dp"
+            app:boxCornerRadiusTopEnd="14dp"
+            app:boxCornerRadiusBottomStart="14dp"
+            app:boxCornerRadiusBottomEnd="14dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEmergencyPhone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:textColor="@color/primary" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+=======
+>>>>>>> origin/master
         <!-- ── Gender ───────────────────────────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
@@ -354,4 +385,8 @@
             android:focusable="true" />
 
     </LinearLayout>
+<<<<<<< HEAD
 </ScrollView>
+=======
+</ScrollView>
+>>>>>>> origin/master

@@ -315,6 +315,16 @@ public class LogsFragment extends Fragment {
     private void launchGallery() { galleryPickerLauncher.launch("image/*"); }
 
     private void runOcr(Uri uri) {
+<<<<<<< HEAD
+        toast("Processing image…");
+        ocrHelper.extractGlucoseValue(requireContext(), uri, new OcrHelper.OcrCallback() {
+            @Override public void onSuccess(int v) {
+                requireActivity().runOnUiThread(() -> { setGlucose(v); updateAiInsight();
+                    snack("Detected " + v + " mg/dL from image."); });
+            }
+            @Override public void onFailure(String msg) {
+                requireActivity().runOnUiThread(() -> snack("OCR: " + msg));
+=======
         // Alternative to deprecated ProgressDialog: Custom AlertDialog with ProgressBar
         ProgressBar progressBar = new ProgressBar(requireContext(), null, android.R.attr.progressBarStyleLarge);
         progressBar.setPadding(0, 40, 0, 40);
@@ -348,10 +358,13 @@ public class LogsFragment extends Fragment {
                             .setNegativeButton("Enter Manually", (d, w) -> etGlucoseLevel.requestFocus())
                             .show();
                 });
+>>>>>>> origin/master
             }
         });
     }
 
+<<<<<<< HEAD
+=======
     /**
      * Shows a confirmation dialog after OCR detects a value.
      * Lets the user verify and correct the number before it fills the field.
@@ -411,6 +424,7 @@ public class LogsFragment extends Fragment {
         etConfirm.post(etConfirm::selectAll);
     }
 
+>>>>>>> origin/master
     // ── Save ──────────────────────────────────────────────────────────────────
 
     private void saveReading() {
@@ -458,4 +472,8 @@ public class LogsFragment extends Fragment {
 
     private void toast(String msg) { Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show(); }
     private void snack(String msg) { Snackbar.make(requireView(), msg, Snackbar.LENGTH_LONG).show(); }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/master
