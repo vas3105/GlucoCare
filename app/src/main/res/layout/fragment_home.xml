@@ -111,6 +111,35 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
+<<<<<<< HEAD
+        <!-- Trend Graph -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="24dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GLUCOSE TRENDS"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.1"
+                    android:textColor="#707E94"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/glucoseChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+=======
         <!-- Quick Actions Row -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -139,6 +168,7 @@
                 android:layout_marginStart="6dp"
                 android:textSize="12sp"/>
         </LinearLayout>
+>>>>>>> origin/master
 
         <Button
             android:id="@+id/btnEmergencySOS"
