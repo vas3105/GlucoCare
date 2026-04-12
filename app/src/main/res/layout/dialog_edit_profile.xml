@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-<<<<<<< HEAD
+    android:layout_height="match_parent">
 
-=======
->>>>>>> origin/master
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -15,26 +12,20 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-<<<<<<< HEAD
             android:text="Update Profile"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="#1A2B4C"
             android:layout_marginBottom="20dp"/>
-=======
-            android:text="Edit Health Profile"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
->>>>>>> origin/master
 
+        <!-- Name -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-<<<<<<< HEAD
             android:hint="Full Name"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_marginBottom="12dp">
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etEditName"
                 android:layout_width="match_parent"
@@ -42,6 +33,7 @@
                 android:inputType="textPersonName"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Age + Weight -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -55,6 +47,7 @@
                 android:hint="Age"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_marginEnd="8dp">
+
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etEditAge"
                     android:layout_width="match_parent"
@@ -66,8 +59,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Weight (lbs)"
+                android:hint="Weight (kg)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etEditWeight"
                     android:layout_width="match_parent"
@@ -75,53 +69,15 @@
                     android:inputType="numberDecimal"/>
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
-=======
-            android:hint="Name"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_marginBottom="8dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etEditName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-        </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Age"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_marginBottom="8dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etEditAge"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Weight"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_marginBottom="8dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etEditWeight"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="numberDecimal"/>
-        </com.google.android.material.textfield.TextInputLayout>
->>>>>>> origin/master
-
+        <!-- Emergency Contact -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Emergency Contact Phone"
-<<<<<<< HEAD
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_marginBottom="24dp">
-=======
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
->>>>>>> origin/master
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etEditEmergencyPhone"
                 android:layout_width="match_parent"
@@ -129,7 +85,7 @@
                 android:inputType="phone"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-<<<<<<< HEAD
+        <!-- Schedule Section -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -142,7 +98,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Notifications will trigger if no reading is entered within 1 hour of these times."
+            android:text="Notifications trigger if no reading is entered within 1 hour."
             android:textSize="12sp"
             android:textColor="#707E94"
             android:layout_marginBottom="16dp"/>
@@ -152,6 +108,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginBottom="12dp">
+
             <Button
                 android:id="@+id/btnBreakfastTime"
                 android:layout_width="0dp"
@@ -160,6 +117,7 @@
                 android:text="Breakfast: 08:00"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_marginEnd="4dp"/>
+
             <Button
                 android:id="@+id/btnLunchTime"
                 android:layout_width="0dp"
@@ -177,7 +135,5 @@
             android:text="Dinner: 19:00"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
 
-=======
->>>>>>> origin/master
     </LinearLayout>
 </ScrollView>

@@ -111,7 +111,6 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
-<<<<<<< HEAD
         <!-- Trend Graph -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -168,7 +167,6 @@
                 android:layout_marginStart="6dp"
                 android:textSize="12sp"/>
         </LinearLayout>
->>>>>>> origin/master
 
         <Button
             android:id="@+id/btnEmergencySOS"
