@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFF">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DASHBOARD"
+            android:textSize="12sp"
+            android:letterSpacing="0.1"
+            android:textColor="#707E94" />
+
+        <TextView
+            android:id="@+id/tvWelcome"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome, David"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1A2B4C"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Alert Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardEmergency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:background="#FFE0E0">
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <ImageView android:id="@+id/iconAlertHome" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_dialog_alert" app:tint="#D32F2F"/>
+                    <TextView
+                        android:id="@+id/tvAlertTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_toEndOf="@id/iconAlertHome"
+                        android:layout_marginStart="8dp"
+                        android:text="CRITICAL ALERT"
+                        android:textStyle="bold"
+                        android:textColor="#D32F2F"/>
+                </RelativeLayout>
+                <TextView
+                    android:id="@+id/tvAlertDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No update detected near meal time. Emergency contact will be alerted soon."
+                    android:textSize="13sp"
+                    android:textColor="#D32F2F"
+                    android:layout_marginTop="8dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Stats Grid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                android:layout_marginEnd="8dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Latest" android:textSize="12sp" android:textColor="#707E94"/>
+                    <TextView android:id="@+id/tvLatestLevel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--" android:textSize="24sp" android:textStyle="bold" android:textColor="#3D79F2"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="mg/dL" android:textSize="10sp" android:textColor="#707E94"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                android:layout_marginStart="8dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Daily Avg" android:textSize="12sp" android:textColor="#707E94"/>
+                    <TextView android:id="@+id/tvAvgLevel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--" android:textSize="24sp" android:textStyle="bold" android:textColor="#1A2B4C"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="mg/dL" android:textSize="10sp" android:textColor="#707E94"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Trend Graph -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="24dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GLUCOSE TRENDS"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.1"
+                    android:textColor="#707E94"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/glucoseChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <Button
+            android:id="@+id/btnEmergencySOS"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="EMERGENCY SOS"
+            android:backgroundTint="#D32F2F"
+            app:cornerRadius="16dp"
+            android:textColor="@android:color/white"/>
+
+    </LinearLayout>
+</ScrollView>
