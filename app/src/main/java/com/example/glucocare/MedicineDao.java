@@ -21,18 +21,25 @@ public interface MedicineDao {
     @Delete
     void delete(Medicine medicine);
 
-    @Query("SELECT * FROM medications ORDER BY time ASC")
-    List<Medicine> getAllMedications();
+    // ── All queries now scoped to a specific userId ───────────────────────────
 
-    @Query("SELECT * FROM medications WHERE firestoreId = :firestoreId LIMIT 1")
-    Medicine getByFirestoreId(String firestoreId);
+    @Query("SELECT * FROM medications WHERE userId = :userId ORDER BY time ASC")
+    List<Medicine> getAllMedications(String userId);
 
+    @Query("SELECT * FROM medications WHERE userId = :userId AND firestoreId = :firestoreId LIMIT 1")
+    Medicine getByFirestoreId(String userId, String firestoreId);
+
+    /** Deletes only the current user's data — used during Firestore sync */
+    @Query("DELETE FROM medications WHERE userId = :userId")
+    void deleteAllForUser(String userId);
+
+    /** Used by logout — clears all local data when user signs out */
     @Query("DELETE FROM medications")
     void deleteAll();
 
-    @Query("SELECT COUNT(*) FROM medications WHERE status = 'TAKEN'")
-    int countTaken();
+    @Query("SELECT COUNT(*) FROM medications WHERE userId = :userId AND status = 'TAKEN'")
+    int countTaken(String userId);
 
-    @Query("SELECT COUNT(*) FROM medications")
-    int countTotal();
+    @Query("SELECT COUNT(*) FROM medications WHERE userId = :userId")
+    int countTotal(String userId);
 }

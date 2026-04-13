@@ -38,41 +38,30 @@ public class GlucoseRepository {
         executor  = Executors.newSingleThreadExecutor();
     }
 
-    // ── UID helper — fetched fresh every time, never cached ──────────────────
-    // This guarantees we always use the real logged-in user's UID,
-    // never a stale or empty value.
+    // ── UID helpers ───────────────────────────────────────────────────────────
 
     private String getCurrentUid() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return null;
-        return user.getUid();
+        return user != null ? user.getUid() : null;
     }
 
     private CollectionReference collection() {
         String uid = getCurrentUid();
         if (uid == null) return null;
-        return firestore
-                .collection("users")
-                .document(uid)
-                .collection(COLLECTION);
+        return firestore.collection("users").document(uid).collection(COLLECTION);
     }
 
     // ── Save ──────────────────────────────────────────────────────────────────
 
     public void saveReading(GlucoseReading reading, Callback<Void> callback) {
         executor.execute(() -> {
-            // 1. Always save locally first
             localDao.insert(reading);
 
-            // 2. Push to Firestore under the correct UID
             CollectionReference col = collection();
             if (col == null) {
-                Log.w(TAG, "saveReading: no signed-in user, saved locally only.");
                 if (callback != null) callback.onResult(null);
                 return;
             }
-
-            Log.d(TAG, "Saving reading to: users/" + getCurrentUid() + "/" + COLLECTION);
 
             col.add(toMap(reading))
                     .addOnSuccessListener(ref -> {
@@ -97,23 +86,20 @@ public class GlucoseRepository {
 
     public void getSevenDayAverage(String type, Callback<Float> callback) {
         executor.execute(() -> {
-            long since = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
-            float avg  = localDao.getAverageForType(type, since);
+            long  since = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
+            float avg   = localDao.getAverageForType(type, since);
             if (callback != null) callback.onResult(avg);
         });
     }
 
-    // ── Sync Firestore → Room ─────────────────────────────────────────────────
+    // ── Sync ──────────────────────────────────────────────────────────────────
 
     public void syncFromFirestore(Callback<Void> callback) {
         CollectionReference col = collection();
         if (col == null) {
-            Log.w(TAG, "syncFromFirestore: no signed-in user.");
             if (callback != null) callback.onError("Not signed in.");
             return;
         }
-
-        Log.d(TAG, "Syncing from: users/" + getCurrentUid() + "/" + COLLECTION);
 
         col.get()
                 .addOnSuccessListener(snapshot -> executor.execute(() -> {
@@ -122,13 +108,25 @@ public class GlucoseRepository {
                         GlucoseReading r = fromMap(doc);
                         if (r != null) localDao.insert(r);
                     }
-                    Log.d(TAG, "Sync done: " + snapshot.size() + " readings.");
+                    Log.d(TAG, "Glucose sync done: " + snapshot.size());
                     if (callback != null) callback.onResult(null);
                 }))
                 .addOnFailureListener(e -> {
-                    Log.w(TAG, "Sync failed: " + e.getMessage());
                     if (callback != null) callback.onError(e.getMessage());
                 });
+    }
+
+    // ── Clear on logout ───────────────────────────────────────────────────────
+
+    /**
+     * Clears all local glucose readings from Room.
+     * Called by MainActivity.signOut() before Firebase signOut().
+     */
+    public void clearLocalDataOnLogout() {
+        executor.execute(() -> {
+            localDao.deleteAll();
+            Log.d(TAG, "Local glucose data cleared on logout.");
+        });
     }
 
     // ── Serialisation ─────────────────────────────────────────────────────────

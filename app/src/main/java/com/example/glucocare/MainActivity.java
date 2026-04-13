@@ -7,15 +7,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import com.example.glucocare.auth.LoginActivity;
+import com.example.glucocare.repository.GlucoseRepository;
+import com.example.glucocare.repository.MedicineRepository;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
-/**
- * MainActivity — hosts all fragments via BottomNavigationView.
- *
- * Auth check: if somehow reached without a signed-in user,
- * redirect immediately back to LoginActivity.
- */
 public class MainActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
@@ -26,7 +22,6 @@ public class MainActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // Guard: must be logged in to reach here
         if (auth.getCurrentUser() == null) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
@@ -37,7 +32,6 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
 
-        // Load default fragment
         if (savedInstanceState == null) {
             loadFragment(new HomeFragment());
             bottomNav.setSelectedItemId(R.id.nav_home);
@@ -65,10 +59,24 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
-    // ── Sign out — call this from ProfileFragment ─────────────────────────────
+    /**
+     * Signs out the user and clears all local Room data.
+     * Call this from ProfileFragment's sign-out button.
+     *
+     * Clears local data BEFORE signing out so getCurrentUser()
+     * is still available when repositories clear their data.
+     */
     public void signOut() {
+        // Clear local Room data BEFORE signing out
+        new MedicineRepository(this).clearLocalDataOnLogout();
+        new GlucoseRepository(this).clearLocalDataOnLogout();
+
+        // Sign out from Firebase
         auth.signOut();
-        startActivity(new Intent(this, LoginActivity.class));
-        finish();
+
+        // Navigate to login, clear back stack
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
     }
 }

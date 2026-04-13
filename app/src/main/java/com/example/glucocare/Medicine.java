@@ -3,14 +3,6 @@ package com.example.glucocare;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-/**
- * Medicine — Room entity + Firestore model.
- *
- * Stored locally in Room table "medications".
- * Synced to Firestore at: users/{uid}/medications/{firestoreId}
- *
- * status values: "TAKEN" | "MISSED" | "UPCOMING"
- */
 @Entity(tableName = "medications")
 public class Medicine {
 
@@ -19,12 +11,14 @@ public class Medicine {
     @PrimaryKey(autoGenerate = true)
     public int id;
 
+    public String userId;       // ← NEW: Firebase UID — filters data per user
+
     public String name;
-    public String dosage;       // e.g. "500mg"
-    public String mealTime;     // e.g. "Breakfast"
-    public String time;         // e.g. "8:00 AM"
-    public String status;       // stored as String for Room ("TAKEN"/"MISSED"/"UPCOMING")
-    public String firestoreId;  // Firestore document ID — used to sync updates/deletes
+    public String dosage;
+    public String mealTime;
+    public String time;
+    public String status;
+    public String firestoreId;
 
     // ── Constructors ──────────────────────────────────────────────────────────
 
@@ -35,9 +29,10 @@ public class Medicine {
         this.mealTime = mealTime;
         this.time     = time;
         this.status   = status.name();
+        // userId is set by MedicineRepository before inserting
     }
 
-    public Medicine() {} // required by Room
+    public Medicine() {}
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -48,16 +43,13 @@ public class Medicine {
 
     public void setStatusEnum(Status s) { this.status = s.name(); }
 
-    /** "500mg • Breakfast" */
     public String getDosageLabel() { return dosage + " • " + mealTime; }
 
-    /** Icon resource based on medicine name keywords */
     public int getIconRes() {
         if (name == null) return R.drawable.ic_med_pill;
         String lower = name.toLowerCase();
-        if (lower.contains("insulin")) return R.drawable.ic_med_insulin;
-        if (lower.contains("januvia") || lower.contains("capsule"))
-            return R.drawable.ic_med_capsule;
+        if (lower.contains("insulin"))                          return R.drawable.ic_med_insulin;
+        if (lower.contains("januvia") || lower.contains("capsule")) return R.drawable.ic_med_capsule;
         return R.drawable.ic_med_pill;
     }
 }

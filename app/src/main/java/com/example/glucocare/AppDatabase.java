@@ -7,22 +7,22 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 /**
- * AppDatabase — version 3
+ * AppDatabase — version 4
  *
- * v1 → v2: added notes column to glucose_readings
+ * v1 → v2: added notes to glucose_readings
  * v2 → v3: added medications table
+ * v3 → v4: added userId column to medications (per-user data separation)
  */
 @Database(
         entities  = { GlucoseReading.class, Medicine.class },
-        version   = 3,
+        version   = 4,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
 
-    public abstract GlucoseDao   glucoseDao();
-    public abstract MedicineDao  medicineDao();
+    public abstract GlucoseDao  glucoseDao();
+    public abstract MedicineDao medicineDao();
 
-    // ── Singleton ─────────────────────────────────────────────────────────────
     private static volatile AppDatabase INSTANCE;
 
     public static AppDatabase getInstance(Context context) {
@@ -34,7 +34,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "glucocare_db"
                             )
-                            .fallbackToDestructiveMigration() // safe for dev
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }
