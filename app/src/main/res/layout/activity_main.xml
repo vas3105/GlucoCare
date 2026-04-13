@@ -22,4 +22,19 @@
         app:itemTextColor="@color/primary"
         app:itemBackground="@drawable/nav_item_bg"/>
 
+    <!-- Floating AI Chat Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAiChat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="80dp"
+        android:contentDescription="AI Chat"
+        app:srcCompat="@android:drawable/ic_menu_send"
+        app:backgroundTint="#1B7A5A"
+        app:tint="@android:color/white"
+        app:elevation="6dp" />
+
 </RelativeLayout>

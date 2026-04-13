@@ -1,8 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.google.gms.google-services")
     alias(libs.plugins.android.application)
 }
 
+// Load API keys from local.properties (never committed to git)
+val localProps = Properties()
+val localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) localProps.load(localPropsFile.inputStream())
 
 android {
     namespace = "com.example.glucocare"
@@ -16,6 +22,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inject keys as BuildConfig constants — safe, never in source control
+        buildConfigField("String", "GEMINI_KEY",   "\"${localProps.getProperty("GEMINI_KEY",   "")}\"")
+        buildConfigField("String", "NEWS_API_KEY",  "\"${localProps.getProperty("NEWS_API_KEY", "")}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -69,4 +83,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 // Tesseract OCR for Android
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation("com.google.android.material:material:1.11.0")
 }
