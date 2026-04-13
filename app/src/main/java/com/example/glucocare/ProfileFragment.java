@@ -24,7 +24,7 @@ import java.util.Locale;
 
 public class ProfileFragment extends Fragment {
 
-    private TextView tvName, tvAge, tvWeight, tvHeight, tvEmergencyPhone;
+    private TextView tvName, tvAge, tvWeight, tvHeight, tvEmergencyPhone, tvDiabetesType;
     private Button btnEdit, btnLogout;
     private UserRepository userRepository;
 
@@ -33,9 +33,10 @@ public class ProfileFragment extends Fragment {
     public static String userAge = "42";
     public static float userWeight = 184;
     public static String userHeight = "5'11";
-    public static int breakfastTime = 480; // 08:00
-    public static int lunchTime = 780;     // 13:00
-    public static int dinnerTime = 1140;   // 19:00
+    public static String diabetesType = "Type 2";
+    public static int breakfastTime = 480; 
+    public static int lunchTime = 780;     
+    public static int dinnerTime = 1140;   
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -52,6 +53,7 @@ public class ProfileFragment extends Fragment {
         tvWeight = view.findViewById(R.id.tvProfileWeight);
         tvHeight = view.findViewById(R.id.tvProfileHeight);
         tvEmergencyPhone = view.findViewById(R.id.tvEmergencyPhone);
+        tvDiabetesType = view.findViewById(R.id.profileDiabetesType);
         btnEdit = view.findViewById(R.id.btnEditProfile);
         btnLogout = view.findViewById(R.id.btnLogout);
 
@@ -70,6 +72,7 @@ public class ProfileFragment extends Fragment {
                     userAge = profile.age;
                     userWeight = profile.weight;
                     userHeight = profile.height;
+                    diabetesType = (profile.diabetesType != null && !profile.diabetesType.isEmpty()) ? profile.diabetesType : "Type 2";
                     breakfastTime = profile.breakfastTime;
                     lunchTime = profile.lunchTime;
                     dinnerTime = profile.dinnerTime;
@@ -95,6 +98,7 @@ public class ProfileFragment extends Fragment {
         tvWeight.setText(userWeight + " lbs");
         tvHeight.setText(userHeight);
         tvEmergencyPhone.setText(HomeFragment.emergencyPhone);
+        tvDiabetesType.setText(diabetesType.toUpperCase());
     }
 
     private void handleLogout() {
@@ -131,7 +135,6 @@ public class ProfileFragment extends Fragment {
         etHeight.setText(userHeight);
         etPhone.setText(HomeFragment.emergencyPhone);
 
-        // Local variables to track selected times in dialog
         final int[] tempTimes = {breakfastTime, lunchTime, dinnerTime};
 
         btnBreakfast.setText("Breakfast: " + formatTime(tempTimes[0]));
@@ -142,12 +145,10 @@ public class ProfileFragment extends Fragment {
             tempTimes[0] = newTime;
             btnBreakfast.setText("Breakfast: " + formatTime(newTime));
         }));
-
         btnLunch.setOnClickListener(v -> showTimePicker(tempTimes[1], newTime -> {
             tempTimes[1] = newTime;
             btnLunch.setText("Lunch: " + formatTime(newTime));
         }));
-
         btnDinner.setOnClickListener(v -> showTimePicker(tempTimes[2], newTime -> {
             tempTimes[2] = newTime;
             btnDinner.setText("Dinner: " + formatTime(newTime));
@@ -159,16 +160,14 @@ public class ProfileFragment extends Fragment {
             final String newAge = etAge.getText().toString();
             final String newHeight = etHeight.getText().toString();
             float weightVal = userWeight;
-            try {
-                weightVal = Float.parseFloat(etWeight.getText().toString());
-            } catch (Exception e) {}
+            try { weightVal = Float.parseFloat(etWeight.getText().toString()); } catch (Exception e) {}
 
             final float finalWeight = weightVal;
             final String newPhone = etPhone.getText().toString();
 
             UserProfile updatedProfile = new UserProfile(
                     FirebaseAuth.getInstance().getUid(),
-                    newName, newAge, "Not Specified", "Type 2", ""
+                    newName, newAge, "Not Specified", diabetesType, ""
             );
             updatedProfile.weight = finalWeight;
             updatedProfile.height = newHeight;
@@ -199,9 +198,7 @@ public class ProfileFragment extends Fragment {
                 @Override
                 public void onError(String error) {
                     if (isAdded()) {
-                        requireActivity().runOnUiThread(() -> {
-                            Toast.makeText(getContext(), "Failed to save: " + error, Toast.LENGTH_SHORT).show();
-                        });
+                        requireActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed: " + error, Toast.LENGTH_SHORT).show());
                     }
                 }
             });
@@ -222,7 +219,5 @@ public class ProfileFragment extends Fragment {
         return String.format(Locale.getDefault(), "%02d:%02d", minutes / 60, minutes % 60);
     }
 
-    interface OnTimeSelectedListener {
-        void onTimeSelected(int minutesFromMidnight);
-    }
+    interface OnTimeSelectedListener { void onTimeSelected(int minutesFromMidnight); }
 }

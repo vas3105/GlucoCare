@@ -74,7 +74,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Height (e.g. 5'11)"
+            android:hint="Height"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_marginBottom="12dp">
 
@@ -110,14 +110,6 @@
             android:textColor="#1A2B4C"
             android:layout_marginBottom="8dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Notifications trigger if no reading is entered within 1 hour."
-            android:textSize="12sp"
-            android:textColor="#707E94"
-            android:layout_marginBottom="16dp"/>
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -129,7 +121,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Breakfast: 08:00"
+                android:text="Breakfast"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_marginEnd="4dp"/>
 
@@ -138,7 +130,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Lunch: 13:00"
+                android:text="Lunch"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_marginStart="4dp"/>
         </LinearLayout>
@@ -147,7 +139,7 @@
             android:id="@+id/btnDinnerTime"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Dinner: 19:00"
+            android:text="Dinner"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
 
     </LinearLayout>
