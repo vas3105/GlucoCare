@@ -53,6 +53,9 @@ public class HomeFragment extends Fragment {
     public static long lastUpdateTimestamp = 0;
     public static String emergencyPhone = "5551234567"; 
 
+    // Static to persist across fragment switches
+    private static String lastAlertedMeal = "";
+
     private Handler monitoringHandler = new Handler();
     private Runnable monitoringTask = new Runnable() {
         @Override
@@ -184,6 +187,7 @@ public class HomeFragment extends Fragment {
                         dataSet.setFillColor(Color.parseColor("#3D79F2"));
                         dataSet.setFillAlpha(30);
                         dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+                        
                         LineData lineData = new LineData(dataSet);
                         glucoseChart.setData(lineData);
                         glucoseChart.invalidate();
@@ -262,6 +266,17 @@ public class HomeFragment extends Fragment {
     }
 
     private void checkInactivityAndAlert(List<GlucoseReading> allReadings) {
+        // SAFETY GUARD: If the user hasn't setup their profile OR has never logged a single reading, 
+        // skip all inactivity alerts. This prevents new users from getting "Missed Meal" alerts immediately.
+        if (emergencyPhone.equals("5551234567") || ProfileFragment.userName.equals("David Miller") || allReadings.isEmpty()) {
+            cardEmergency.setVisibility(View.GONE);
+            // However, we still check for the glucose level alert if they just added their first reading
+            if (!allReadings.isEmpty()) {
+                checkGlucoseAlert(lastReading);
+            }
+            return;
+        }
+
         Calendar now = Calendar.getInstance();
         int currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
 
@@ -283,8 +298,8 @@ public class HomeFragment extends Fragment {
                                      logCal.get(Calendar.YEAR) == now.get(Calendar.YEAR);
                     int logMin = logCal.get(Calendar.HOUR_OF_DAY) * 60 + logCal.get(Calendar.MINUTE);
 
-                    // If a log exists within 1 hour before or after the meal time
-                    if (sameDay && Math.abs(logMin - mealTime) <= 60) {
+                    // A log is valid if it was recorded AFTER mealTime started or within the window.
+                    if (sameDay && logMin >= (mealTime - 60)) {
                         foundLogForThisMeal = true;
                         break;
                     }
@@ -301,9 +316,9 @@ public class HomeFragment extends Fragment {
                         tvAlertDesc.setText("It's time for your " + labels[i] + " glucose reading.");
                     }
                     alertShown = true;
-                    break; // Stop checking older meals if the current one is missing
+                    break; 
                 } else {
-                    // If we found a log for the most recent passed meal, we are safe!
+                    // Safe for the most recent meal!
                     break;
                 }
             }
@@ -314,9 +329,12 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    private String lastAlertedMeal = "";
     private void sendEmergencySms(String meal) {
         if (lastAlertedMeal.equals(meal)) return;
+        
+        // Don't send SMS to the default dummy number
+        if (emergencyPhone.equals("5551234567")) return;
+
         try {
             if (getContext() != null && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
                 SmsManager smsManager = SmsManager.getDefault();
