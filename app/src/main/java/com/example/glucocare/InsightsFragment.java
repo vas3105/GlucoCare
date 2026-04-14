@@ -156,7 +156,7 @@ public class InsightsFragment extends Fragment {
 
     private void callInsightAI(String prompt) {
         try {
-            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + GEMINI_KEY);
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=" + GEMINI_KEY);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
@@ -171,7 +171,7 @@ public class InsightsFragment extends Fragment {
             OutputStream os = conn.getOutputStream();
             os.write(body.toString().getBytes("UTF-8"));
             os.flush(); os.close();
-            conn.connect();
+            // Note: conn.connect() removed — getOutputStream() already opens the connection
 
             int code = conn.getResponseCode();
             BufferedReader br = (code >= 200 && code < 300)
@@ -182,6 +182,7 @@ public class InsightsFragment extends Fragment {
             while ((line = br.readLine()) != null) response.append(line);
             br.close();
 
+            android.util.Log.d("GlucoCare", "Gemini raw response (code=" + code + "): " + response);
             String aiText = new JSONObject(response.toString())
                     .getJSONArray("candidates").getJSONObject(0)
                     .getJSONObject("content").getJSONArray("parts")
